@@ -1,0 +1,8 @@
+# IDE files
+.idea/
+.vscode/
+
+# Python  byte-compiled / optimized
+__pycache__/
+*.py[cod]
+*$py.class
