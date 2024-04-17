@@ -84,7 +84,7 @@ class SCSimilarity(MoleculeSimilarity):
             raise ValueError()
 
     @staticmethod
-    def _embed(mol: Chem.rdchem.Mol):
+    def _embed(mol: Chem.rdchem.Mol) -> Chem.rdchem.Mol:
         mol = rdmolops.AddHs(mol)
         AllChem.EmbedMolecule(mol)
         return mol
