@@ -112,7 +112,7 @@ class SCSimilarity(MoleculeSimilarity):
 
     @staticmethod
     def _get_protrude_dist(mol1: Chem.rdchem.Mol, mol2: Chem.rdchem.Mol) -> float:
-        return rdShapeHelpers.ShapeProtrudeDist(mol1, mol2, allowReordering=False)
+        return rdShapeHelpers.ShapeProtrudeDist(mol1, mol2, allowReordering=True)
 
     @staticmethod
     def _calc_sc_score(mol1: Chem.rdchem.Mol, mol2: Chem.rdchem.Mol) -> float:
