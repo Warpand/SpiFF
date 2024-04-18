@@ -1,25 +1,23 @@
-from pathlib import Path
+import os
 
 import pandas as pd
 import rdkit.Chem
-from featurizer import Featurizer, GraphFeatures
 from rdkit import Chem
 from torch.utils.data import Dataset
 from torch_geometric.data import Data
 
+from data.featurizer import Featurizer, GraphFeatures
+
 
 class ZincDataset(Dataset):
-    """
-    Dataset representing molecules from Zinc database.
-    """
+    """Dataset representing molecules from Zinc database."""
 
-    def __init__(self, data_path: Path, featurizer: Featurizer) -> None:
+    def __init__(self, data_path: str | os.PathLike, featurizer: Featurizer) -> None:
         """
-        Constructs ZincDataset.
+        Construct the ZincDataset.
 
-        :param data_path: path to dataset file.
-        :param featurizer: featurizer which can be used to
-        extract features from molecules.
+        :param data_path: path to the dataset file.
+        :param featurizer: featurizer to extract features from molecules.
         """
 
         super().__init__()
@@ -29,9 +27,10 @@ class ZincDataset(Dataset):
 
     def __getitem__(self, index: int) -> (GraphFeatures, int):
         """
-        Returns features for molecule at given index and its index.
+        Get features for molecule at given index and the index itself.
 
         :param index: index of data sample.
+        :returns: data sample at the index and the index.
         """
 
         data_sample = self.feature_data[index]
@@ -39,18 +38,19 @@ class ZincDataset(Dataset):
 
     def __len__(self) -> int:
         """
-        Returns size of the dataset.
+        Calculate size of the dataset.
 
-        :return: size of the dataset.
+        :returns: size of the dataset.
         """
 
         return len(self.feature_data)
 
     def get_molecule(self, index: int) -> rdkit.Chem.Mol:
         """
-        Returns molecule at given index.
+        Get the molecule at given index.
 
-        :param index: index of molecule.
+        :param index: index of the molecule.
+        :returns: a chemical molecule as an rdkit object.
         """
 
         return self.molecules[index]

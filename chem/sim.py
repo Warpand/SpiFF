@@ -15,7 +15,7 @@ class MoleculeSimilarity(ABC):
     @abstractmethod
     def __call__(self, mol1: Chem.rdchem.Mol, mol2: Chem.rdchem.Mol) -> float:
         """
-        Calculates the similarity measure between the two molecules.
+        Calculate the similarity measure between the two molecules.
 
         The higher the value, the more similar the molecules.
 

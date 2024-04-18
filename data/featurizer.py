@@ -20,7 +20,7 @@ class Featurizer(ABC):
     @abstractmethod
     def num_features(self) -> int:
         """
-        Calculates length of feature tensor this class produces.
+        Calculate length of feature tensor this class produces.
 
         :returns: length of tensors or length of atom_features field in GraphFeatures
         that extract_features method returns.
@@ -60,7 +60,7 @@ class GraphFeaturizer(Featurizer):
         add_self_loops: bool = True,
     ) -> None:
         """
-        Constructs the featurizer.
+        Construct the featurizer.
 
         :param atom_symbols: symbols of atoms that will be one-hot encoded.
         Atoms not in the list will be encoded as unknown.
