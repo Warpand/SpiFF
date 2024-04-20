@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Callable, List, Union
+from typing import Callable, List, Optional, Union
 
 import torch
 from rdkit import Chem
@@ -34,7 +34,7 @@ class Featurizer(ABC):
         """
         Calculate features for a given molecule.
 
-        :param molecule: the molecule for which the features will be calculated.
+        :param molecule: the molecule for which the features are calculated.
         :returns: GraphFeatures object with calculated features or features tensor.
         """
         pass
@@ -63,7 +63,7 @@ class GraphFeaturizer(Featurizer):
         Construct the featurizer.
 
         :param atom_symbols: symbols of atoms that will be one-hot encoded.
-        Atoms not in the list will be encoded as unknown.
+        Atoms not in the list are encoded as unknown.
         :param atom_features: functions used to extract additional features from atoms.
         :param add_self_loops: whether to add self loops as edges.
         """
@@ -104,11 +104,55 @@ class GraphFeaturizer(Featurizer):
         return GraphFeatures(atom_features, edge_index)
 
 
-class DefaultFeaturizerFactory(FeaturizerFactory):
-    def __call__(self) -> Featurizer:
-        return GraphFeaturizer(
-            ["C", "H", "O", "N", "S", "F", "Cl", "Br", "I"],
-            [Chem.rdchem.Atom.GetAtomicNum],
-        )
+class GraphFeaturizerFactory(FeaturizerFactory):
+    def __init__(
+        self, atom_feature_names: List[str], atom_symbols: Optional[List[str]]
+    ):
+        """
+        Construct the factory.
 
-    # TO DO add atom features
+        :param atom_feature_names: names of features to be extracted by
+        a GraphFeaturizer produced by this factory. Names should be the same as names
+        of methods from rdkit.Chem.rdchem.Atom, without leading get (lettercase is
+        ignored).
+        :param atom_symbols: list of symbols of atoms used by a produced featurizer.
+        If None, a default one is used.
+        :raises ValueError: if an unsupported atom feature name is passed in
+        atom_feature_names.
+        """
+
+        self.atom_features = list(
+            map(GraphFeaturizerFactory._string_to_atom_feature, atom_feature_names)
+        )
+        if atom_symbols is None:
+            self.atom_symbols = ["C", "H", "O", "N", "S", "F", "Cl", "Br", "I"]
+        else:
+            self.atom_symbols = atom_symbols
+
+    @staticmethod
+    def _string_to_atom_feature(
+        feature_name: str,
+    ) -> Callable[[Chem.rdchem.Atom], Union[float, int]]:
+        name = feature_name.lower()
+        match name:
+            case "atomicnumber":
+                return Chem.rdchem.Atom.GetAtomicNum
+            case "degree":
+                return Chem.rdchem.Atom.GetDegree
+            case "formalcharge":
+                return Chem.rdchem.Atom.GetFormalCharge
+            case "hybridization":
+                return Chem.rdchem.Atom.GetHybridization
+            case "isaromatic":
+                return Chem.rdchem.Atom.GetIsAromatic
+            case "mass":
+                return Chem.rdchem.Atom.GetMass
+            case "numimpliciths":
+                return Chem.rdchem.Atom.GetTotalDegree
+            case "partialcharge":
+                return Chem.rdchem.Atom.GetPartialCharge
+            case _:
+                raise ValueError()
+
+    def __call__(self) -> Featurizer:
+        return GraphFeaturizer(self.atom_symbols, self.atom_features)
