@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Iterable, List, SupportsIndex, Tuple
 
@@ -7,6 +8,8 @@ from rdkit import Chem
 from torch.utils.data import Dataset
 
 from data.featurizer import Featurizer, GraphFeatures
+
+logger = logging.getLogger(__name__)
 
 
 class ZincDataset(Dataset):
@@ -21,6 +24,7 @@ class ZincDataset(Dataset):
         """
 
         super().__init__()
+        logger.info(f"Extracting chemical features from {data_path}")
         df = pd.read_csv(data_path, sep=" ")
         self.molecules = [Chem.MolFromSmiles(smiles) for smiles in df["smiles"]]
         self.feature_data = [featurizer.extract_features(mol) for mol in self.molecules]

@@ -1,9 +1,12 @@
+import logging
 from abc import ABC, abstractmethod
 from typing import Callable, List, Type
 
 import torch
 import torch_geometric.nn.models
 import torch_geometric.nn.models.basic_gnn as basic_gnn
+
+logger = logging.getLogger(__name__)
 
 
 class ModelFactory(ABC):
@@ -117,16 +120,18 @@ class SPiFFFactory(ModelFactory):
         :raises ValueError: if unsupported values are passed as gnn_type or
         linear_activation_func_type.
         """
-        
+
         match gnn_type:
             case "SAGE":
                 gnn_class = torch_geometric.nn.models.GraphSAGE
             case "GAT":
                 gnn_class = torch_geometric.nn.models.GAT
             case _:
-                raise ValueError(
-                    f"{gnn_type} is unexpected for gnn_class_type argument"
+                logger.error(
+                    f"Passed unsupported {gnn_type} "
+                    f"as gnn_type parameter in SpiFFFactory."
                 )
+                raise ValueError()
 
         match readout_function_type:
             case "mean":
@@ -136,10 +141,11 @@ class SPiFFFactory(ModelFactory):
             case "add":
                 readout_function = torch_geometric.nn.global_add_pool
             case _:
-                raise ValueError(
-                    f"{readout_function_type} is unexpected "
-                    f"for readout_function_type argument"
+                logger.error(
+                    f"Passed unsupported {readout_function_type} "
+                    f"as readout_function_type parameter in SpiFFFactory."
                 )
+                raise ValueError
 
         match linear_activation_func_type:
             case "relu":
@@ -149,10 +155,11 @@ class SPiFFFactory(ModelFactory):
             case "sigmoid":
                 linear_activation_func = torch.nn.Sigmoid
             case _:
-                raise ValueError(
-                    f"{linear_activation_func_type} "
-                    f"is unexpected for linear_activation_func_type argument"
+                logger.error(
+                    f"Passed unsupported {linear_activation_func_type} "
+                    f"as readout_function_type parameter in SpiFFFactory."
                 )
+                raise ValueError()
 
         return SPiFF(
             input_size,

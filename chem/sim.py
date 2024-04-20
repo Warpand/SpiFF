@@ -1,3 +1,4 @@
+import logging
 import os
 from abc import ABC, abstractmethod
 from typing import Literal
@@ -7,6 +8,8 @@ import rdkit.Chem.rdmolops as rdmolops
 from rdkit import Chem, RDConfig
 from rdkit.Chem import AllChem, rdMolAlign, rdShapeHelpers
 from rdkit.Chem.FeatMaps import FeatMaps
+
+logger = logging.getLogger(__name__)
 
 
 class MoleculeSimilarity(ABC):
@@ -92,6 +95,9 @@ class SCSimilarity(MoleculeSimilarity):
         elif reduce == "mean":
             self.reduce_func = np.mean
         else:
+            logger.error(
+                f"Passed unsupported '{reduce}' as reduce parameter in SCSimilarity."
+            )
             raise ValueError()
 
     @staticmethod
@@ -126,16 +132,21 @@ class SCSimilarity(MoleculeSimilarity):
         return rdShapeHelpers.ShapeProtrudeDist(mol1, mol2, allowReordering=True)
 
     def _calc_sc_score(self, mol1: Chem.rdchem.Mol, mol2: Chem.rdchem.Mol) -> float:
-        mol1 = SCSimilarity._embed(mol1)
-        mol2 = SCSimilarity._embed(mol2)
+        # noinspection PyBroadException
+        try:
+            mol1 = SCSimilarity._embed(mol1)
+            mol2 = SCSimilarity._embed(mol2)
 
-        rdMolAlign.GetO3A(mol1, mol2).Align()
+            rdMolAlign.GetO3A(mol1, mol2).Align()
 
-        fmap_score = SCSimilarity._get_fmap_score(mol1, mol2)
-        protrude_dist = SCSimilarity._get_protrude_dist(mol1, mol2)
-        return self.color_weight * fmap_score + self.shape_weight * (
-            1.0 - protrude_dist
-        )
+            fmap_score = SCSimilarity._get_fmap_score(mol1, mol2)
+            protrude_dist = SCSimilarity._get_protrude_dist(mol1, mol2)
+            return self.color_weight * fmap_score + self.shape_weight * (
+                1.0 - protrude_dist
+            )
+        except Exception:
+            logger.warning("Could not calculate the sc score.")
+            return 0.0
 
     def __call__(self, mol1: Chem.rdchem.Mol, mol2: Chem.rdchem.Mol) -> float:
         values = [self._calc_sc_score(mol1, mol2) for _ in range(self.num_tries)]
