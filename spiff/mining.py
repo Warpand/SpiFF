@@ -43,6 +43,8 @@ class TripletMiner:
         :return: TripleIndexes object containing indexes of molecules belonging
         respectively to anchors, positives and negatives and a tensor containing all the
         calculated similarity measure values.
+        :raises ValueError: if the batch of received molecules has size not divisible
+        by 3.
         """
 
         if len(molecules) % 3 != 0:
