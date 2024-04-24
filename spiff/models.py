@@ -1,17 +1,37 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import Callable, List, Type
+from typing import Callable, List
 
 import torch
+import torch_geometric.nn.aggr
 import torch_geometric.nn.models
-import torch_geometric.nn.models.basic_gnn as basic_gnn
 
 logger = logging.getLogger(__name__)
 
 
 class ModelFactory(ABC):
+    """Interface for a factory producing neural networks."""
+
     @abstractmethod
-    def __call__(self, *args) -> torch.nn.Module:
+    def __call__(self, input_size: int, output_size: int) -> torch.nn.Module:
+        """
+        Produces the model.
+
+        :param input_size: the dimensionality of the input of the model.
+        :param output_size: the dimensionality of the output of the model.
+        :returns: the produced model.
+        """
+        pass
+
+
+class FuncFactory(ABC):
+    """
+    Interface for a factory producing functions, such as activation functions and
+    readout functions.
+    """
+
+    @abstractmethod
+    def __call__(self) -> torch.nn.Module:
         pass
 
 
@@ -21,13 +41,11 @@ class SPiFF(torch.nn.Module):
     def __init__(
         self,
         input_size: int,
+        intermediate_size: int,
         latent_size: int,
-        gnn_class: Type[basic_gnn.BasicGNN],
-        hidden_size: int,
-        num_gnn_layers: int,
-        readout_function: Callable[[torch.Tensor, torch.Tensor], torch.Tensor],
-        linear_layer_sizes: List[int],
-        linear_activation_func: Type[torch.nn.Module],
+        gnn_factory: ModelFactory,
+        linear_factory: ModelFactory,
+        readout_factory: FuncFactory,
         projection_head_size: int,
     ) -> None:
 
@@ -35,37 +53,32 @@ class SPiFF(torch.nn.Module):
         Construct the SpiFF model.
 
         :param input_size: size of a model input sample.
+        :param intermediate_size: size of the intermediate representation after the gnn
+        and before the linear layers
         :param latent_size: size of model output (dimensionality of representations).
-        :param gnn_class: GNN model class used for molecule graph representations.
-        :param hidden_size: size of the GNN hidden layers.
-        :param num_gnn_layers: number of layers used in GNN model.
-        :param readout_function: readout function used after the GNN.
-        :param linear_layer_sizes: list of the linear layer sizes.
-        :param linear_activation_func: type of the activation function between the
-        linear layers.
+        :param gnn_factory: factory producing GNN models molecule graph representations.
+        :param readout_factory: factory producing readout used after the GNN.
+        :param linear_factory: factory producing the linear part of the model.
         :param projection_head_size: size of linear layer used as a projection head
         during the training phase.
         """
 
         super().__init__()
 
-        self.gnn = gnn_class(input_size, hidden_size, num_gnn_layers)
-        self.readout_function = readout_function
-
-        linear_layer_sizes.insert(0, hidden_size)
-        linear_layer_sizes.append(latent_size)
-
-        mlp_layers = []
-        for dim_in, dim_out in zip(linear_layer_sizes[:-1], linear_layer_sizes[1:]):
-            mlp_layers.append(torch.nn.Linear(dim_in, dim_out))
-            mlp_layers.append(linear_activation_func())
-
-        self.mlp = torch.nn.Sequential(*mlp_layers)
+        self.gnn = gnn_factory(input_size, intermediate_size)
+        self.readout_function = readout_factory()
+        self.mlp = linear_factory(intermediate_size, latent_size)
         self.projection_head = torch.nn.Sequential(
             torch.nn.Linear(latent_size, projection_head_size),
-            linear_activation_func(),
+            torch.nn.ReLU(),
             torch.nn.Linear(projection_head_size, projection_head_size),
         )
+
+        self._latent_size = latent_size
+
+    @property
+    def latent_size(self) -> int:
+        return self._latent_size
 
     def forward(
         self, x: torch.Tensor, edge_index: torch.Tensor, batch: torch.Tensor
@@ -87,88 +100,150 @@ class SPiFF(torch.nn.Module):
         return x
 
 
-class SPiFFFactory(ModelFactory):
-    def __call__(
+class LinearModelFactory(ModelFactory):
+    """Factory producing mlp models."""
+
+    def __init__(
         self,
-        input_size: int,
-        latent_size: int,
-        gnn_type: str,
+        layer_sizes: List[int],
+        activation_factory: FuncFactory,
+        use_batch_norm: bool = True,
+    ) -> None:
+        """
+        Construct the factory.
+
+        :param layer_sizes: sizes of the hidden layers of the produced models.
+        :param activation_factory: factory producing activation functions used in the
+        model.
+        :param use_batch_norm: whether to use batch norm between the layers.
+        """
+
+        self.layer_sizes = layer_sizes
+        self.activation_factory = activation_factory
+        self.use_batch_norm = use_batch_norm
+
+    def __call__(self, input_size: int, output_size: int) -> torch.nn.Module:
+        layers = []
+        for in_features, out_features in zip(
+            [input_size] + self.layer_sizes, self.layer_sizes
+        ):
+            layers.append(torch.nn.Linear(in_features, out_features))
+            if self.use_batch_norm:
+                layers.append(torch.nn.BatchNorm1d(out_features))
+            layers.append(self.activation_factory())
+        layers.append(torch.nn.Linear(self.layer_sizes[-1], output_size))
+        return torch.nn.Sequential(*layers)
+
+
+class GNNFactory(ModelFactory):
+    """Factory producing gnn models."""
+
+    def __init__(
+        self,
+        name: str,
         hidden_size: int,
-        num_gnn_layers: int,
-        readout_function_type: str,
-        linear_layer_sizes: List[int],
-        linear_activation_func_type: str,
-        projection_head_size: int,
-    ) -> SPiFF:
+        num_layers: int,
+        activation_factory: FuncFactory = lambda: torch.nn.ReLU(),
+    ) -> None:
         """
-        Create new SPiFF model.
+        Construct the factory.
 
-        :param input_size: size of the model input sample.
-        :param latent_size: size of model output (dimensionality of representation).
-        :param gnn_type: string representing the type of GNN model used
-        for molecule graph representation.
-        :param hidden_size: size of GNN hidden layers.
-        :param num_gnn_layers: number of layers used in the GNN.
-        :param readout_function_type: string representing the type of the readout
-        function be used after the GNN.
-        :param linear_layer_sizes: list of linear layer sizes.
-        :param linear_activation_func_type: string representing the type of the
-        activation function used between the linear layers.
-        :param projection_head_size: size of linear layer used in the projection head
-        during the training phase.
-        :returns: new instance of the SPiFF class.
-        :raises ValueError: if unsupported values are passed as gnn_type or
-        linear_activation_func_type.
+        Maps gnn names given as strings to torch_geometric classes.
+
+        :param name: string representing the name of the gnn this object produces.
+        :param hidden_size: size of each hidden sample of the gnn.
+        :param num_layers: number of message passing layers.
+        :param activation_factory: factory producing the activation function used by
+        the gnn.
+        :raises ValueError: if unsupported name is supplied.
         """
-
-        match gnn_type:
-            case "SAGE":
-                gnn_class = torch_geometric.nn.models.GraphSAGE
-            case "GAT":
-                gnn_class = torch_geometric.nn.models.GAT
+        match name.lower():
+            case "sage":
+                self.gnn_class = torch_geometric.nn.models.GraphSAGE
+            case "gat":
+                self.gnn_class = torch_geometric.nn.models.GAT
+            case "gin":
+                self.gnn_class = torch_geometric.nn.models.GIN
             case _:
-                logger.error(
-                    f"Passed unsupported {gnn_type} "
-                    f"as gnn_type parameter in SpiFFFactory."
-                )
+                logger.error(f"Passed unsupported {name} as gnn type.")
                 raise ValueError()
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.activation_factory = activation_factory
 
-        match readout_function_type:
-            case "mean":
-                readout_function = torch_geometric.nn.global_mean_pool
-            case "max":
-                readout_function = torch_geometric.nn.global_max_pool
-            case "add":
-                readout_function = torch_geometric.nn.global_add_pool
-            case _:
-                logger.error(
-                    f"Passed unsupported {readout_function_type} "
-                    f"as readout_function_type parameter in SpiFFFactory."
-                )
-                raise ValueError
-
-        match linear_activation_func_type:
-            case "relu":
-                linear_activation_func = torch.nn.ReLU
-            case "elu":
-                linear_activation_func = torch.nn.ELU
-            case "sigmoid":
-                linear_activation_func = torch.nn.Sigmoid
-            case _:
-                logger.error(
-                    f"Passed unsupported {linear_activation_func_type} "
-                    f"as readout_function_type parameter in SpiFFFactory."
-                )
-                raise ValueError()
-
-        return SPiFF(
+    def __call__(self, input_size: int, output_size: int) -> torch.nn.Module:
+        return self.gnn_class(
             input_size,
-            latent_size,
-            gnn_class,
-            hidden_size,
-            num_gnn_layers,
-            readout_function,
-            linear_layer_sizes,
-            linear_activation_func,
-            projection_head_size,
+            self.hidden_size,
+            self.num_layers,
+            output_size,
+            act=self.activation_factory(),
         )
+
+
+class ActivationFuncFactory(FuncFactory):
+    """
+    Factory producing activation functions.
+
+    Maps function names given as strings to torch classes.
+    """
+
+    def __init__(self, name: str, *args):
+        """
+        Construct the factory.
+
+        :param name: string representing the name of the activation function this object
+        produces.
+        :param args: additional arguments that may be passed to functions' constructors.
+        :raises ValueError: if unsupported name is supplied.
+        """
+        match name.lower():
+            case "elu":
+                self.func_type = torch.nn.ELU
+            case "leakyrelu":
+                self.func_type = torch.nn.LeakyReLU
+            case "relu":
+                self.func_type = torch.nn.ReLU
+            case "sigmoid":
+                self.func_type = torch.nn.Sigmoid
+            case _:
+                logger.error(
+                    f"Passed unsupported {name} as an activation function name."
+                )
+                raise ValueError()
+        self.args = args
+
+    def __call__(self) -> Callable[[torch.Tensor], torch.Tensor]:
+        return self.func_type(*self.args)
+
+
+class ReadoutFuncFactory(FuncFactory):
+    """
+    Factory producing readout functions.
+
+    Maps readout names given as strings to torch_geometric classes.
+    """
+
+    def __init__(self, name: str, *args):
+        """
+        Construct the factory.
+
+        :param name: string representing the name of the readout function this object
+        produces.
+        :param args: additional arguments that may be passed to functions' constructors.
+        :raises ValueError: if unsupported name is supplied.
+        """
+        match name.lower():
+            case "max":
+                self.readout = torch_geometric.nn.aggr.MaxAggregation
+            case "mean":
+                self.readout = torch_geometric.nn.aggr.MeanAggregation
+            case "sum":
+                self.readout = torch_geometric.nn.aggr.SumAggregation
+            case _:
+                logger.error(f"Passed unsupported {name} as readout name.")
+                raise ValueError()
+        self.args = args
+
+    def __call__(self) -> torch.nn.Module:
+        return self.readout(*self.args)
