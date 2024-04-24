@@ -39,6 +39,9 @@ class TripletMiner:
         """
         Divide a batch of molecules into anchor-positive-negative triples.
 
+        Also returns a tensor with values of calculated similarity measures.
+        The order of values in the returned similarities tensor is intentional.
+
         :param molecules: batch of molecules to divide.
         :return: TripleIndexes object containing indexes of molecules belonging
         respectively to anchors, positives and negatives and a tensor containing all the

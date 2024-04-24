@@ -7,7 +7,7 @@ from spiff.mining import TripletMiner
 
 
 class TestTripletMiner(TestCase):
-    def test_mine(self):
+    def setUp(self):
         values = {
             ("mol0", "mol1"): 0.99,
             ("mol1", "mol0"): 0.99,
@@ -16,11 +16,10 @@ class TestTripletMiner(TestCase):
             ("mol1", "mol2"): 0.45,
             ("mol2", "mol1"): 0.45,
         }
-        similarity_measure = Mock()
-        similarity_measure.side_effect = lambda m1, m2: values[(m1, m2)]
-        miner = TripletMiner(similarity_measure)
+        self.similarity_measure = Mock()
+        self.similarity_measure.side_effect = lambda m1, m2: values[(m1, m2)]
         # fmt: off
-        molecules = [
+        self.molecules = [
             "mol0", "mol1", "mol2",
             "mol0", "mol2", "mol1",
             "mol1", "mol0", "mol2",
@@ -29,7 +28,11 @@ class TestTripletMiner(TestCase):
             "mol2", "mol1", "mol0",
         ]
         # fmt: on
-        triplets, distances = miner.mine(molecules)  # type: ignore
+
+    def test_mine_triplets(self):
+        miner = TripletMiner(self.similarity_measure)
+        triplets, _ = miner.mine(self.molecules)  # type: ignore
+
         self.assertTrue(
             torch.all(triplets.anchor_indexes == torch.LongTensor([1, 5, 6, 9, 14, 16]))
         )
@@ -44,13 +47,21 @@ class TestTripletMiner(TestCase):
             )
         )
 
-        for i in range(0, len(distances), 3):
-            dist = distances[i : i + 3]
-            self.assertTrue(
-                torch.allclose(dist, torch.FloatTensor([0.99, 0.6, 0.45]))
-                or torch.allclose(dist, torch.FloatTensor([0.99, 0.45, 0.6]))
-                or torch.allclose(dist, torch.FloatTensor([0.6, 0.99, 0.45]))
-                or torch.allclose(dist, torch.FloatTensor([0.6, 0.45, 0.99]))
-                or torch.allclose(dist, torch.FloatTensor([0.45, 0.99, 0.6]))
-                or torch.allclose(dist, torch.FloatTensor([0.45, 0.6, 0.99]))
-            )
+    def test_mine_similarity(self):
+        miner = TripletMiner(self.similarity_measure)
+        _, sim = miner.mine(self.molecules)  # type: ignore
+
+        # fmt: off
+        expected_similarity = torch.FloatTensor(
+            [
+                0.99, 0.45, 0.6,
+                0.6, 0.45, 0.99,
+                0.99, 0.6, 0.45,
+                0.45, 0.6, 0.99,
+                0.6, 0.99, 0.45,
+                0.45, 0.99, 0.6,
+            ]
+        )
+        # fmt: on
+
+        self.assertTrue(torch.allclose(expected_similarity, sim))
