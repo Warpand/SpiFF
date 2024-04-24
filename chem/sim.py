@@ -1,3 +1,4 @@
+import logging
 import os
 from abc import ABC, abstractmethod
 from typing import Literal
@@ -7,6 +8,8 @@ import rdkit.Chem.rdmolops as rdmolops
 from rdkit import Chem, RDConfig
 from rdkit.Chem import AllChem, rdMolAlign, rdShapeHelpers
 from rdkit.Chem.FeatMaps import FeatMaps
+
+logger = logging.getLogger(__name__)
 
 
 class MoleculeSimilarity(ABC):
@@ -62,7 +65,11 @@ class SCSimilarity(MoleculeSimilarity):
     )
 
     def __init__(
-        self, num_tries: int = 5, reduce: Literal["max", "min", "mean"] = "max"
+        self,
+        num_tries: int = 5,
+        shape_score_weight: float = 0.5,
+        color_score_weight: float = 0.5,
+        reduce: Literal["max", "min", "mean"] = "max",
     ) -> None:
         """
         Construct the class.
@@ -70,10 +77,17 @@ class SCSimilarity(MoleculeSimilarity):
         :param num_tries: number of times the measure will be calculated.
         :param reduce: specifies how the final results is derived from the multiple
         tries.
+        :param shape_score_weight: weight of the shape compound of the score
+        (volumetric comparison).
+        :param color_score_weight: weight of the color compound of the
+        score (pharmacophoric features).
 
         :raises ValueError: if an inappropriate string is supplied as reduce parameter.
         """
+
         self.num_tries = num_tries
+        self.shape_weight = shape_score_weight
+        self.color_weight = color_score_weight
         if reduce == "max":
             self.reduce_func = np.max
         elif reduce == "min":
@@ -81,6 +95,9 @@ class SCSimilarity(MoleculeSimilarity):
         elif reduce == "mean":
             self.reduce_func = np.mean
         else:
+            logger.error(
+                f"Passed unsupported '{reduce}' as reduce parameter in SCSimilarity."
+            )
             raise ValueError()
 
     @staticmethod
@@ -114,20 +131,24 @@ class SCSimilarity(MoleculeSimilarity):
     def _get_protrude_dist(mol1: Chem.rdchem.Mol, mol2: Chem.rdchem.Mol) -> float:
         return rdShapeHelpers.ShapeProtrudeDist(mol1, mol2, allowReordering=True)
 
-    @staticmethod
-    def _calc_sc_score(mol1: Chem.rdchem.Mol, mol2: Chem.rdchem.Mol) -> float:
-        mol1 = SCSimilarity._embed(mol1)
-        mol2 = SCSimilarity._embed(mol2)
+    def _calc_sc_score(self, mol1: Chem.rdchem.Mol, mol2: Chem.rdchem.Mol) -> float:
+        # noinspection PyBroadException
+        try:
+            mol1 = SCSimilarity._embed(mol1)
+            mol2 = SCSimilarity._embed(mol2)
 
-        rdMolAlign.GetO3A(mol1, mol2).Align()
+            rdMolAlign.GetO3A(mol1, mol2).Align()
 
-        fmap_score = SCSimilarity._get_fmap_score(mol1, mol2)
-        protrude_dist = SCSimilarity._get_protrude_dist(mol1, mol2)
-        return 0.5 * fmap_score + 0.5 * (1.0 - protrude_dist)
+            fmap_score = SCSimilarity._get_fmap_score(mol1, mol2)
+            protrude_dist = SCSimilarity._get_protrude_dist(mol1, mol2)
+            return self.color_weight * fmap_score + self.shape_weight * (
+                1.0 - protrude_dist
+            )
+        except Exception:
+            logger.warning("Could not calculate the sc score.")
+            return 0.0
 
     def __call__(self, mol1: Chem.rdchem.Mol, mol2: Chem.rdchem.Mol) -> float:
-        values = [
-            SCSimilarity._calc_sc_score(mol1, mol2) for _ in range(self.num_tries)
-        ]
+        values = [self._calc_sc_score(mol1, mol2) for _ in range(self.num_tries)]
 
         return float(self.reduce_func(values))
