@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from typing import List
+from typing import List, Tuple
 
 import torch
 from rdkit import Chem
@@ -35,7 +35,7 @@ class TripletMiner:
     # noinspection DuplicatedCode
     def mine(
         self, molecules: List[Chem.rdchem.Mol]
-    ) -> (TripleIndexes, torch.FloatTensor):
+    ) -> Tuple[TripleIndexes, torch.FloatTensor]:
         """
         Divide a batch of molecules into anchor-positive-negative triples.
 
