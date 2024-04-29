@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Self, Tuple
 
 import torch
 from rdkit import Chem
@@ -17,6 +17,12 @@ class TripleIndexes:
     positive_indexes: torch.LongTensor
     negative_indexes: torch.LongTensor
 
+    def to(self, device: str | torch.device) -> Self:
+        self.anchor_indexes.to(device)
+        self.positive_indexes.to(device)
+        self.negative_indexes.to(device)
+        return self
+
 
 class TripletMiner:
     """
@@ -30,12 +36,13 @@ class TripletMiner:
 
         :param similarity_measure: similarity measure of molecules used by the miner.
         """
+
         self.similarity_measure = similarity_measure
 
     # noinspection DuplicatedCode
     def mine(
         self, molecules: List[Chem.rdchem.Mol]
-    ) -> Tuple[TripleIndexes, torch.FloatTensor]:
+    ) -> Tuple[TripleIndexes, torch.Tensor]:
         """
         Divide a batch of molecules into anchor-positive-negative triples.
 
@@ -95,5 +102,5 @@ class TripletMiner:
                 torch.LongTensor(positives),
                 torch.LongTensor(negatives),
             ),
-            torch.FloatTensor(similarities),
+            torch.Tensor(similarities),
         )
