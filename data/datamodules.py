@@ -29,9 +29,14 @@ class ZincDatamodule(pytorch_lightning.LightningDataModule):
 
         super().__init__()
 
-        self.data = ZincDataset(data_path, featurizer)
+        self.data = None
+        self.data_path = data_path
+        self.featurizer = featurizer
         self.batch_size = batch_size
         self.num_workers = num_workers
+
+    def setup(self, stage: str) -> None:
+        self.data = ZincDataset(self.data_path, self.featurizer)
 
     def train_dataloader(self) -> torch.utils.data.DataLoader:
         """

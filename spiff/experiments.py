@@ -91,7 +91,7 @@ class SPiFFModule(pytorch_lightning.LightningModule):
         return self.model(x)
 
     def on_train_epoch_end(self) -> None:
-        """Perform wandb logging."""
+        """Log metrics to wandb."""
 
         wandb_logger = self.logger.experiment  # type: ignore
         hist = self.hist_metric.compute()

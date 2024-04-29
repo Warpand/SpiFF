@@ -106,7 +106,7 @@ class GraphFeaturizer(Featurizer):
 
 class GraphFeaturizerFactory(FeaturizerFactory):
     def __init__(
-        self, atom_feature_names: List[str], atom_symbols: Optional[List[str]]
+        self, atom_feature_names: List[str], atom_symbols: Optional[List[str]] = None
     ):
         """
         Construct the factory.
