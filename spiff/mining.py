@@ -3,7 +3,7 @@ import sys
 from dataclasses import dataclass
 from typing import List, Tuple
 
-if sys.version_info <= (3, 11):
+if sys.version_info < (3, 11):
     from typing_extensions import Self
 else:
     from typing import Self
