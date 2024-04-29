@@ -4,6 +4,7 @@ import pytorch_lightning
 import torch
 import torch_geometric.data.batch
 import wandb
+from pytorch_lightning import loggers as pl_loggers
 from pytorch_lightning.utilities.types import OptimizerLRScheduler
 
 from spiff.metrics import Histogram
@@ -40,6 +41,8 @@ class SPiFFModule(pytorch_lightning.LightningModule):
         step = 0.1
         bins = torch.arange(0.0, 1.0 + step, step)
         self.hist_metric = Histogram(bins)
+
+        self.using_wandb = isinstance(self.logger, pl_loggers.WandbLogger)
 
         self.save_hyperparameters()
 
@@ -95,22 +98,23 @@ class SPiFFModule(pytorch_lightning.LightningModule):
     def on_train_epoch_end(self) -> None:
         """Log metrics to wandb."""
 
-        wandb_logger = self.logger.experiment  # type: ignore
-        hist = self.hist_metric.compute()
-        hist /= torch.sum(hist)  # normalize to [0.1]
-        data = [
-            [str(bin_label.item()), bin_val]
-            for bin_label, bin_val in zip(self.hist_metric.bins.cpu(), hist)
-        ]
-        table = wandb.Table(data=data, columns=["bin", "probability"])
-        wandb_logger.log(
-            {
-                "histogram": wandb.plot.bar(
-                    table, "bin", "probability", title="Similarity Distribution"
-                )
-            },
-            step=self.current_epoch,
-        )
+        if self.using_wandb:
+            wandb_logger = self.logger.experiment  # type: ignore
+            hist = self.hist_metric.compute()
+            hist /= torch.sum(hist)  # normalize to [0.1]
+            data = [
+                [str(bin_label.item()), bin_val]
+                for bin_label, bin_val in zip(self.hist_metric.bins.cpu(), hist)
+            ]
+            table = wandb.Table(data=data, columns=["bin", "probability"])
+            wandb_logger.log(
+                {
+                    "histogram": wandb.plot.bar(
+                        table, "bin", "probability", title="Similarity Distribution"
+                    )
+                },
+                step=self.current_epoch,
+            )
 
         self.hist_metric.reset()
 
