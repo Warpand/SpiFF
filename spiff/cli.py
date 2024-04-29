@@ -4,6 +4,12 @@ import spiff.cfg as cfg
 
 
 def parse_arguments() -> argparse.Namespace:
+    """
+    Parse sys.argv.
+
+    :returns: Namespace object with values for the defined flags.
+    """
+
     parser = argparse.ArgumentParser(
         prog="spiff", description="SpiFF - Spatial Features Fingerprint"
     )
@@ -89,6 +95,12 @@ def parse_arguments() -> argparse.Namespace:
 
 
 def override_with_flags(config: cfg.ExperimentConfig, args: argparse.Namespace) -> None:
+    """
+    Override configuration values with values from the commandline flags.
+
+    :param config: ExperimentConfig object whose values are overridden.
+    :param args: Namespace with values of the flags.
+    """
     config.system_config.wandb_entity = args.entity
     config.system_config.wandb_project = args.project
     config.system_config.results_dir = args.results

@@ -4,8 +4,24 @@ from abc import ABC
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Union
 
+"""
+The module defines a set of dataclasses that extend a base Config class.
+
+The ExperimentConfig class is intended to be used as a top-level configuration.
+
+The config class defines 'override' method that allows overwriting its fields' values
+with values taken from a dict, that comes from a parsed JSON file.
+The keys in the JSON should have exactly the same signature as fields of the Config
+subclass, whose object is calling the override method. If a field's type is another
+subclass of Config, the value for the respective key should be a JSON object, that is
+appropriate the given subclass.
+
+It is not necessary to overwrite all the fields.
+"""
+
 
 def default_chem_features():
+    """Define the default chemical features to be extracted from atoms."""
     return [
         "atomicnumber",
         "degree",
@@ -19,6 +35,8 @@ def default_chem_features():
 
 
 class Config(ABC):
+    """Abstract base class that defines the override method."""
+
     def override(self, cfg: Dict[str, Union[str, int, float, dict]]) -> None:
         for key, val in cfg.items():
             if key not in self.__dict__:
@@ -67,3 +85,5 @@ class ExperimentConfig(Config):
             not self.system_config.wandb_entity or not self.system_config.wandb_project
         ):
             raise ValueError("using wandb, but either entity or project is not set")
+        if self.batch_size % 3 != 0:
+            raise ValueError("setting batch size not divisible by 3")

@@ -1,4 +1,4 @@
-from typing import Callable, List
+from typing import Callable, List, Union
 
 import pytorch_lightning
 import torch
@@ -45,7 +45,7 @@ class SPiFFModule(pytorch_lightning.LightningModule):
 
     def training_step(
         self,
-        batch: List[torch.Tensor, torch_geometric.data.batch.Batch],
+        batch: List[Union[torch.Tensor, torch_geometric.data.batch.Batch]],
         batch_idx: int,
     ) -> torch.Tensor:
         """
@@ -57,12 +57,14 @@ class SPiFFModule(pytorch_lightning.LightningModule):
         """
 
         molecule_indexes, batch_data = batch
-        x = batch_data.x
-        edge_indexes = batch_data.edge_index
-        batch_indexes = batch_data.batch
+        x: torch.Tensor = batch_data.x
+        edge_indexes: torch.Tensor = batch_data.edge_index
+        batch_indexes: torch.Tensor = batch_data.batch
 
         embeddings = self(x, edge_indexes, batch_indexes)
-        molecules = self.train_dataloader().dataset.get_molecules(molecule_indexes)
+        molecules = self.trainer.train_dataloader.dataset.get_molecules(
+            molecule_indexes
+        )
 
         triple_indexes, similarity_values = self.miner.mine(molecules)
         triple_indexes.to(self.device)

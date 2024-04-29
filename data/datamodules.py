@@ -52,4 +52,9 @@ class ZincDatamodule(pytorch_lightning.LightningDataModule):
             persistent_workers=True,
             shuffle=True,
             drop_last=True,
+            pin_memory=True,
         )
+
+    @property
+    def dataset(self):
+        return self.data
