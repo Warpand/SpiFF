@@ -76,6 +76,7 @@ class SystemConfig(Config):
 class ExperimentConfig(Config):
     learning_rate: float = 1e-4
     batch_size: int = 3 * 512
+    epochs: int = 1000
     chem_features: List[str] = field(default_factory=default_chem_features)
     model_config: ModelConfig = field(default_factory=lambda: ModelConfig())
     system_config: SystemConfig = field(default_factory=lambda: SystemConfig())

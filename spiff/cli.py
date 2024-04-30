@@ -80,6 +80,13 @@ def parse_arguments() -> argparse.Namespace:
         default=cfg.ExperimentConfig.batch_size,
         help="batch size; should be divisible by 3 (default: %(default)s)",
     )
+    params_group.add_argument(
+        "-e",
+        "--epochs",
+        type=int,
+        default=cfg.ExperimentConfig.epochs,
+        help="number of training epochs (default: %(default)s)",
+    )
 
     misc = parser.add_argument_group("Miscellaneous")
     misc.add_argument(

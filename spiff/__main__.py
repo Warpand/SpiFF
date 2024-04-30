@@ -6,6 +6,7 @@ from datetime import datetime
 
 import coolname
 import torch
+from pytorch_lightning import Trainer
 from pytorch_lightning import loggers as pl_loggers
 
 import spiff.models as models
@@ -116,4 +117,11 @@ if __name__ == "__main__":
         torch.nn.TripletMarginLoss(),
         TripletMiner(SCSimilarity()),
         cfg.learning_rate,
+    )
+
+    trainer = Trainer(
+        accelerator=args.device,
+        logger=pl_logger,
+        max_epochs=cfg.epochs,
+        default_root_dir=cfg.system_config.results_dir,
     )
