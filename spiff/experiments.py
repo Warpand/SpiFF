@@ -1,9 +1,10 @@
-from typing import Callable, List
+from typing import Callable, List, Union
 
 import pytorch_lightning
 import torch
 import torch_geometric.data.batch
 import wandb
+from pytorch_lightning import loggers as pl_loggers
 from pytorch_lightning.utilities.types import OptimizerLRScheduler
 
 from spiff.metrics import Histogram
@@ -41,11 +42,13 @@ class SPiFFModule(pytorch_lightning.LightningModule):
         bins = torch.arange(0.0, 1.0 + step, step)
         self.hist_metric = Histogram(bins)
 
+        self.using_wandb = isinstance(self.logger, pl_loggers.WandbLogger)
+
         self.save_hyperparameters()
 
     def training_step(
         self,
-        batch: List[torch.Tensor, torch_geometric.data.batch.Batch],
+        batch: List[Union[torch.Tensor, torch_geometric.data.batch.Batch]],
         batch_idx: int,
     ) -> torch.Tensor:
         """
@@ -57,12 +60,14 @@ class SPiFFModule(pytorch_lightning.LightningModule):
         """
 
         molecule_indexes, batch_data = batch
-        x = batch_data.x
-        edge_indexes = batch_data.edge_index
-        batch_indexes = batch_data.batch
+        x: torch.Tensor = batch_data.x
+        edge_indexes: torch.Tensor = batch_data.edge_index
+        batch_indexes: torch.Tensor = batch_data.batch
 
         embeddings = self(x, edge_indexes, batch_indexes)
-        molecules = self.train_dataloader().dataset.get_molecules(molecule_indexes)
+        molecules = self.trainer.train_dataloader.dataset.get_molecules(
+            molecule_indexes
+        )
 
         triple_indexes, similarity_values = self.miner.mine(molecules)
         triple_indexes.to(self.device)
@@ -91,24 +96,25 @@ class SPiFFModule(pytorch_lightning.LightningModule):
         return self.model(x)
 
     def on_train_epoch_end(self) -> None:
-        """Perform wandb logging."""
+        """Log metrics to wandb."""
 
-        wandb_logger = self.logger.experiment  # type: ignore
-        hist = self.hist_metric.compute()
-        hist /= torch.sum(hist)  # normalize to [0.1]
-        data = [
-            [str(bin_label.item()), bin_val]
-            for bin_label, bin_val in zip(self.hist_metric.bins.cpu(), hist)
-        ]
-        table = wandb.Table(data=data, columns=["bin", "probability"])
-        wandb_logger.log(
-            {
-                "histogram": wandb.plot.bar(
-                    table, "bin", "probability", title="Similarity Distribution"
-                )
-            },
-            step=self.current_epoch,
-        )
+        if self.using_wandb:
+            wandb_logger = self.logger.experiment  # type: ignore
+            hist = self.hist_metric.compute()
+            hist /= torch.sum(hist)  # normalize to [0.1]
+            data = [
+                [str(bin_label.item()), bin_val]
+                for bin_label, bin_val in zip(self.hist_metric.bins.cpu(), hist)
+            ]
+            table = wandb.Table(data=data, columns=["bin", "probability"])
+            wandb_logger.log(
+                {
+                    "histogram": wandb.plot.bar(
+                        table, "bin", "probability", title="Similarity Distribution"
+                    )
+                },
+                step=self.current_epoch,
+            )
 
         self.hist_metric.reset()
 
@@ -122,3 +128,7 @@ class SPiFFModule(pytorch_lightning.LightningModule):
         optimizer = torch.optim.AdamW(self.model.parameters(), self.lr)
         scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, 0.99)
         return [optimizer], [scheduler]
+
+    @property
+    def latent_size(self) -> int:
+        return self.model.latent_size
