@@ -33,7 +33,7 @@ def set_up_experiment_logger(
     config: ExperimentConfig, name: str, use_wandb: bool
 ) -> pl_loggers.Logger:
     hyperparams = {
-        key: val for key, val in config.__dict__ if not isinstance(val, Config)
+        key: val for key, val in config.__dict__.items() if not isinstance(val, Config)
     }
     hyperparams.update(config.model_config.__dict__)
     if use_wandb:
@@ -122,4 +122,7 @@ if __name__ == "__main__":
         logger=pl_logger,
         max_epochs=cfg.epochs,
         default_root_dir=cfg.system_config.results_dir,
+        enable_checkpointing=True,
     )
+
+    trainer.fit(experiment, datamodule=datamodule)
