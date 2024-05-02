@@ -128,3 +128,7 @@ class SPiFFModule(pytorch_lightning.LightningModule):
         optimizer = torch.optim.AdamW(self.model.parameters(), self.lr)
         scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, 0.99)
         return [optimizer], [scheduler]
+
+    @property
+    def latent_size(self) -> int:
+        return self.model.latent_size
