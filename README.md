@@ -18,7 +18,7 @@ python3 -m spiff --no-wandb
 ```
 ### Configuration
 The spiff/cfg.py file contains the default experiment configuration. You can change the
-values there, overwrite at runtime with values from a JSON:
+values there, or overwrite them at runtime with values from a JSON:
 ```console
 python3 -m spiff -C [PATH_TO_JSON]
 ```
