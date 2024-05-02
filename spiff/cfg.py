@@ -61,7 +61,7 @@ class ModelConfig(Config):
     linear_activation: str = "LeakyReLU"
     linear_activation_args: List = field(default_factory=lambda: [0.2])
     latent_size: int = 256
-    projection_head_size: int = 128
+    projection_head_size: Optional[int] = 128
 
 
 @dataclass(eq=False)
@@ -77,6 +77,7 @@ class ExperimentConfig(Config):
     learning_rate: float = 1e-4
     batch_size: int = 3 * 512
     epochs: int = 1000
+    margin: float = 1.0
     chem_features: List[str] = field(default_factory=default_chem_features)
     model_config: ModelConfig = field(default_factory=lambda: ModelConfig())
     system_config: SystemConfig = field(default_factory=lambda: SystemConfig())

@@ -13,7 +13,7 @@ import spiff.models as models
 from chem.sim import SCSimilarity
 from data.datamodules import ZincDatamodule
 from data.featurizer import GraphFeaturizerFactory
-from spiff.cfg import ExperimentConfig
+from spiff.cfg import Config, ExperimentConfig
 from spiff.cli import override_with_flags, parse_arguments
 from spiff.experiments import SPiFFModule
 from spiff.mining import TripletMiner
@@ -33,8 +33,7 @@ def set_up_experiment_logger(
     config: ExperimentConfig, name: str, use_wandb: bool
 ) -> pl_loggers.Logger:
     hyperparams = {
-        "learning_rate": config.learning_rate,
-        "batch_size": config.batch_size,
+        key: val for key, val in config.__dict__ if not isinstance(val, Config)
     }
     hyperparams.update(config.model_config.__dict__)
     if use_wandb:
@@ -55,9 +54,8 @@ def set_up_experiment_logger(
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(levelname)s: %(message)s")
+    logging.basicConfig(format="%(levelname)s: %(message)s", level="INFO")
     args = parse_arguments()
-    logger.setLevel("INFO")
     cfg = ExperimentConfig()
     if args.config:
         logger.info(f"Overriding configuration with contents of {args.config}.")
@@ -114,7 +112,7 @@ if __name__ == "__main__":
 
     experiment = SPiFFModule(
         spiff,
-        torch.nn.TripletMarginLoss(),
+        torch.nn.TripletMarginLoss(cfg.margin),
         TripletMiner(SCSimilarity()),
         cfg.learning_rate,
     )

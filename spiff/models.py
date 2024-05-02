@@ -1,6 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import Callable, List
+from typing import Callable, List, Optional
 
 import torch
 import torch_geometric.nn.aggr
@@ -46,7 +46,7 @@ class SPiFF(torch.nn.Module):
         gnn_factory: ModelFactory,
         linear_factory: ModelFactory,
         readout_factory: FuncFactory,
-        projection_head_size: int,
+        projection_head_size: Optional[int],
     ) -> None:
 
         """
@@ -60,7 +60,7 @@ class SPiFF(torch.nn.Module):
         :param readout_factory: factory producing readout used after the GNN.
         :param linear_factory: factory producing the linear part of the model.
         :param projection_head_size: size of linear layer used as a projection head
-        during the training phase.
+        during the training phase. If None, no projection head is used.
         """
 
         super().__init__()
@@ -68,11 +68,14 @@ class SPiFF(torch.nn.Module):
         self.gnn = gnn_factory(input_size, intermediate_size)
         self.readout_function = readout_factory()
         self.mlp = linear_factory(intermediate_size, latent_size)
-        self.projection_head = torch.nn.Sequential(
-            torch.nn.Linear(latent_size, projection_head_size),
-            torch.nn.ReLU(),
-            torch.nn.Linear(projection_head_size, projection_head_size),
-        )
+        if projection_head_size is not None:
+            self.projection_head = torch.nn.Sequential(
+                torch.nn.Linear(latent_size, projection_head_size),
+                torch.nn.ReLU(),
+                torch.nn.Linear(projection_head_size, projection_head_size),
+            )
+        else:
+            self.projection_head = None
 
         self._latent_size = latent_size
 
@@ -95,7 +98,7 @@ class SPiFF(torch.nn.Module):
         x = self.gnn(x, edge_index)
         x = self.readout_function(x, batch)
         x = self.mlp(x)
-        if self.training:
+        if self.training and self.projection_head is not None:
             x = self.projection_head(x)
         return x
 

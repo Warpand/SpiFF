@@ -87,6 +87,13 @@ def parse_arguments() -> argparse.Namespace:
         default=cfg.ExperimentConfig.epochs,
         help="number of training epochs (default: %(default)s)",
     )
+    params_group.add_argument(
+        "-m",
+        "--margin",
+        type=float,
+        default=cfg.ExperimentConfig.margin,
+        help="margin of the Triplet Margin Loss (default: %(default)s)",
+    )
 
     misc = parser.add_argument_group("Miscellaneous")
     misc.add_argument(
@@ -115,3 +122,5 @@ def override_with_flags(config: cfg.ExperimentConfig, args: argparse.Namespace) 
 
     config.batch_size = args.batch_size
     config.learning_rate = args.learning_rate
+    config.epochs = args.epochs
+    config.margin = args.margin
