@@ -1,4 +1,4 @@
-from unittest import TestCase
+from unittest import TestCase, skipUnless
 
 import torch
 
@@ -18,6 +18,8 @@ class TestHistogram(TestCase):
         res = histogram.compute().cpu()
         self.assertTrue(torch.all(res == torch.Tensor([1, 0, 0, 0, 0, 0, 0, 0, 0, 1])))
 
+
+    @skipUnless(torch.cuda.is_available(), "Requires cuda.")
     def test_bins(self):
         histogram = Histogram(10).to("cuda")
         self.assertTrue(
