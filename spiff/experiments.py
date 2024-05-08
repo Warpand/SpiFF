@@ -5,7 +5,6 @@ import pytorch_lightning
 import torch
 import torch_geometric.data.batch
 import wandb
-from pytorch_lightning import loggers as pl_loggers
 from pytorch_lightning.utilities.types import OptimizerLRScheduler
 
 from data.featurizer import GraphFeaturizer, GraphFeaturizerFactory
@@ -27,14 +26,16 @@ class SPiFFModule(pytorch_lightning.LightningModule):
         loss_fn: Callable[[torch.Tensor, torch.Tensor, torch.Tensor], torch.Tensor],
         miner: TripletMiner,
         lr: float,
+        using_wandb: bool,
     ) -> None:
         """
         Construct the SPiFFModule.
 
-        :param model: the SPiFF model
+        :param model: the SPiFF model.
         :param loss_fn: loss function.
-        :param miner: miner dividing batches into triplets
+        :param miner: miner dividing batches into triplets.
         :param lr: the optimizer learning rate.
+        :param using_wandb: whether Weights & Biases is used.
         """
 
         super().__init__()
@@ -44,11 +45,10 @@ class SPiFFModule(pytorch_lightning.LightningModule):
         self.miner = miner
         self.lr = lr
 
-        step = 0.1
-        bins = torch.arange(0.0, 1.0 + step, step)
-        self.hist_metric = Histogram(bins)
+        num_bins = 10
+        self.hist_metric = Histogram(num_bins)
 
-        self.using_wandb = isinstance(self.logger, pl_loggers.WandbLogger)
+        self.using_wandb = using_wandb
 
         self._featurizer: Optional[GraphFeaturizer] = None
 
@@ -110,7 +110,7 @@ class SPiFFModule(pytorch_lightning.LightningModule):
             hist /= torch.sum(hist)  # normalize to [0.1]
             data = [
                 [str(bin_label.item()), bin_val]
-                for bin_label, bin_val in zip(self.hist_metric.bins.cpu(), hist)
+                for bin_label, bin_val in zip(self.hist_metric.bins, hist)
             ]
             table = wandb.Table(data=data, columns=["bin", "probability"])
             wandb_logger.log(

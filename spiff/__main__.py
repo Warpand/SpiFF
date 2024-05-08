@@ -115,6 +115,7 @@ if __name__ == "__main__":
         torch.nn.TripletMarginLoss(cfg.margin),
         TripletMiner(SCSimilarity()),
         cfg.learning_rate,
+        using_wandb,
     )
 
     trainer = Trainer(

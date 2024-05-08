@@ -5,16 +5,21 @@ import torchmetrics
 class Histogram(torchmetrics.Metric):
     """Metric computing histograms."""
 
-    def __init__(self, bins: torch.Tensor) -> None:
+    def __init__(self, num_bins: int, left: float = 0.0, right: float = 1.0) -> None:
         """
         Construct the metric.
 
-        :param bins: bins for calculating histogram.
+        :param num_bins: number of bins for the histogram calculation.
+        :param left: lower bound of the lowest values bin.
+        :param right: upped bound of the greatest values bin.
         """
+
         super().__init__()
 
-        self.register_buffer("_bins", bins)
-        self.add_state("hist", default=torch.zeros(len(bins)), dist_reduce_fx="sum")
+        self.num_bins = num_bins
+        self.left = left
+        self.right = right
+        self.add_state("hist", default=torch.zeros(num_bins), dist_reduce_fx="sum")
 
     def update(self, values: torch.Tensor) -> None:
         """
@@ -23,8 +28,8 @@ class Histogram(torchmetrics.Metric):
         :param values: tensor of new values.
         """
 
-        histogram = torch.histogram(values, bins=self._bins)
-        self.hist += histogram.hist
+        histogram = torch.histc(values, self.num_bins, self.left, self.right)
+        self.hist += histogram
 
     def compute(self) -> torch.Tensor:
         """
@@ -37,4 +42,4 @@ class Histogram(torchmetrics.Metric):
 
     @property
     def bins(self):
-        return self._bins
+        return torch.linspace(self.left, self.right, self.num_bins + 1)
