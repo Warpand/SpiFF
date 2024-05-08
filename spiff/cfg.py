@@ -23,14 +23,13 @@ It is not necessary to overwrite all the fields.
 def default_chem_features():
     """Define the default chemical features to be extracted from atoms."""
     return [
-        "atomicnumber",
+        "atomicnum",
         "degree",
         "formalcharge",
         "hybridization",
         "isaromatic",
         "mass",
         "numimpliciths",
-        "partialcharge",
     ]
 
 

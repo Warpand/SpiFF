@@ -58,8 +58,8 @@ def parse_arguments() -> argparse.Namespace:
     system_group.add_argument(
         "-d",
         "--device",
-        choices=["gpu", "cpu"],
-        default=["gpu"],
+        choices=["cuda", "cpu"],
+        default="cuda",
         help="device to use (default: %(default)s)",
     )
 

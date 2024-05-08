@@ -1,9 +1,12 @@
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Callable, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Union
 
 import torch
 from rdkit import Chem
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -53,6 +56,9 @@ class GraphFeaturizer(Featurizer):
     Encodes atom types as one-hot and adds additional features.
     """
 
+    FEATURES_KEY = "features"
+    SYMBOLS_KEY = "atoms"
+
     def __init__(
         self,
         atom_symbols: List[str],
@@ -101,7 +107,25 @@ class GraphFeaturizer(Featurizer):
         edges_begin, edges_end = zip(*edges)
         edge_index = torch.vstack((torch.Tensor(edges_begin), torch.Tensor(edges_end)))
 
-        return GraphFeatures(atom_features, edge_index)
+        return GraphFeatures(atom_features, edge_index.type(torch.int64))
+
+    def save(self) -> Dict[str, List[str]]:
+        """
+        Create a pickle serializable object representing the featurizer.
+
+        The object can then be used to create a factory that produces a compatible
+        featurizer.
+
+        :return: dictionary representing the featurizer.
+        """
+
+        return {
+            GraphFeaturizer.SYMBOLS_KEY: list(self.atom_codes.keys()),
+            GraphFeaturizer.FEATURES_KEY: [
+                feature.__name__.lower().removeprefix("get")
+                for feature in self.atom_features
+            ],
+        }
 
 
 class GraphFeaturizerFactory(FeaturizerFactory):
@@ -135,7 +159,7 @@ class GraphFeaturizerFactory(FeaturizerFactory):
     ) -> Callable[[Chem.rdchem.Atom], Union[float, int]]:
         name = feature_name.lower()
         match name:
-            case "atomicnumber":
+            case "atomicnum":
                 return Chem.rdchem.Atom.GetAtomicNum
             case "degree":
                 return Chem.rdchem.Atom.GetDegree
@@ -148,11 +172,25 @@ class GraphFeaturizerFactory(FeaturizerFactory):
             case "mass":
                 return Chem.rdchem.Atom.GetMass
             case "numimpliciths":
-                return Chem.rdchem.Atom.GetTotalDegree
-            case "partialcharge":
-                return Chem.rdchem.Atom.GetPartialCharge
+                return Chem.rdchem.Atom.GetNumImplicitHs
             case _:
+                logger.error("Unexpected atom feature name: " + feature_name)
                 raise ValueError()
 
     def __call__(self) -> Featurizer:
         return GraphFeaturizer(self.atom_symbols, self.atom_features)
+
+    @staticmethod
+    def load(rep: Dict[str, List[str]]) -> "GraphFeaturizerFactory":
+        """
+        Load information from a deserialized to create a factory object.
+
+        Can use a dictionary returned by GraphFeaturizer::save to construct a factory
+        that can produce a compatible featurizer.
+
+        :param rep: dictionary containing deserialized GraphFeaturizer representation.
+        :return: compatible GraphFeaturizerFactory object.
+        """
+        return GraphFeaturizerFactory(
+            rep[GraphFeaturizer.FEATURES_KEY], rep[GraphFeaturizer.SYMBOLS_KEY]
+        )

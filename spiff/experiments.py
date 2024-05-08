@@ -1,4 +1,5 @@
-from typing import Callable, List, Union
+import logging
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import pytorch_lightning
 import torch
@@ -7,13 +8,18 @@ import wandb
 from pytorch_lightning import loggers as pl_loggers
 from pytorch_lightning.utilities.types import OptimizerLRScheduler
 
+from data.featurizer import GraphFeaturizer, GraphFeaturizerFactory
 from spiff.metrics import Histogram
 from spiff.mining import TripletMiner
 from spiff.models import SPiFF
 
+logger = logging.getLogger(__name__)
+
 
 class SPiFFModule(pytorch_lightning.LightningModule):
     """PyTorch Lightning module for the SPiFF model."""
+
+    FEATURIZER_CHECKPOINT_KEY = "featurizer"
 
     def __init__(
         self,
@@ -44,7 +50,7 @@ class SPiFFModule(pytorch_lightning.LightningModule):
 
         self.using_wandb = isinstance(self.logger, pl_loggers.WandbLogger)
 
-        self.save_hyperparameters()
+        self._featurizer: Optional[GraphFeaturizer] = None
 
     def training_step(
         self,
@@ -93,7 +99,7 @@ class SPiFFModule(pytorch_lightning.LightningModule):
         :param batch: assigns each node to a specific example.
         :returns: representation of a chemical molecule graph.
         """
-        return self.model(x)
+        return self.model(x, edge_index, batch)
 
     def on_train_epoch_end(self) -> None:
         """Log metrics to wandb."""
@@ -128,6 +134,24 @@ class SPiFFModule(pytorch_lightning.LightningModule):
         optimizer = torch.optim.AdamW(self.model.parameters(), self.lr)
         scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, 0.99)
         return [optimizer], [scheduler]
+
+    def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
+        try:
+            key = self.FEATURIZER_CHECKPOINT_KEY
+            checkpoint[key] = self.trainer.datamodule.featurizer.save()  # type: ignore
+        except AttributeError:
+            logger.warning("Error while saving featurizer to checkpoint.")
+
+    def on_load_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
+        try:
+            self._featurizer = GraphFeaturizerFactory.load(
+                checkpoint[self.FEATURIZER_CHECKPOINT_KEY]
+            )()
+        except KeyError:
+            logger.warning("Error while loading featurizer from checkpoint.")
+
+    def get_compatible_featurizer(self) -> Optional[GraphFeaturizer]:
+        return self._featurizer
 
     @property
     def latent_size(self) -> int:
