@@ -7,7 +7,7 @@ import torch_geometric.data.batch
 import wandb
 from pytorch_lightning.utilities.types import OptimizerLRScheduler
 
-from data.featurizer import GraphFeaturizer, GraphFeaturizerFactory
+from data.featurizer import Featurizer, GraphFeaturizerFactory
 from spiff.metrics import Histogram
 from spiff.mining import TripletMiner
 from spiff.models import SPiFF
@@ -50,7 +50,7 @@ class SPiFFModule(pytorch_lightning.LightningModule):
 
         self.using_wandb = using_wandb
 
-        self._featurizer: Optional[GraphFeaturizer] = None
+        self._featurizer_factory: Optional[GraphFeaturizerFactory] = None
 
     def training_step(
         self,
@@ -77,7 +77,7 @@ class SPiFFModule(pytorch_lightning.LightningModule):
 
         triple_indexes, similarity_values = self.miner.mine(molecules)
         triple_indexes.to(self.device)
-        similarity_values.to(self.device)
+        similarity_values = similarity_values.to(self.device)
 
         anchor = embeddings[triple_indexes.anchor_indexes]
         positive = embeddings[triple_indexes.positive_indexes]
@@ -86,7 +86,7 @@ class SPiFFModule(pytorch_lightning.LightningModule):
         loss = self.loss_fn(anchor, positive, negative)
 
         self.hist_metric.update(similarity_values)
-        self.log("loss", loss, on_epoch=True, on_step=False)
+        self.log("loss", loss, on_epoch=True, on_step=False, batch_size=len(x))
 
         return loss
 
@@ -144,14 +144,28 @@ class SPiFFModule(pytorch_lightning.LightningModule):
 
     def on_load_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
         try:
-            self._featurizer = GraphFeaturizerFactory.load(
+            self._featurizer_factory = GraphFeaturizerFactory.load(
                 checkpoint[self.FEATURIZER_CHECKPOINT_KEY]
-            )()
+            )
         except KeyError:
             logger.warning("Error while loading featurizer from checkpoint.")
 
-    def get_compatible_featurizer(self) -> Optional[GraphFeaturizer]:
-        return self._featurizer
+    def get_compatible_featurizer(self) -> Featurizer:
+        """
+        Get a GraphFeaturizer compatible with the model.
+
+        Data necessary to construct the featurizer is extracted from a PyTorch Lightning
+        checkpoint.
+
+        :return: a compatible featurizer.
+        :raises ValueError: if appropriate data was not loaded from the checkpoint.
+        """
+
+        if self._featurizer_factory is not None:
+            return self._featurizer_factory()
+        else:
+            logger.error("Unable to create a compatible FeaturizerFactory.")
+            raise ValueError()
 
     @property
     def latent_size(self) -> int:

@@ -1,9 +1,7 @@
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import Literal
 
-import numpy as np
 import rdkit.Chem.rdmolops as rdmolops
 from rdkit import Chem, RDConfig
 from rdkit.Chem import AllChem, rdMolAlign, rdShapeHelpers
@@ -42,8 +40,8 @@ class SCSimilarity(MoleculeSimilarity):
 
     License is in legal/DeLinker_License.
 
-    Due to non-deterministic nature of the measure and high variance of its value,
-    the measure is calculated several times.
+    Due to the high variance of the measures value depending on the embedding,
+    a manually set seed is used during the embedding process.
     """
 
     _FEATURE_FACTORY = AllChem.BuildFeatureFactory(
@@ -66,44 +64,27 @@ class SCSimilarity(MoleculeSimilarity):
 
     def __init__(
         self,
-        num_tries: int = 5,
         shape_score_weight: float = 0.5,
         color_score_weight: float = 0.5,
-        reduce: Literal["max", "min", "mean"] = "max",
+        random_seed: int = 42,
     ) -> None:
         """
         Construct the class.
 
-        :param num_tries: number of times the measure will be calculated.
-        :param reduce: specifies how the final results is derived from the multiple
-        tries.
         :param shape_score_weight: weight of the shape compound of the score
         (volumetric comparison).
         :param color_score_weight: weight of the color compound of the
         score (pharmacophoric features).
-
-        :raises ValueError: if an inappropriate string is supplied as reduce parameter.
+        :param random_seed: seed of the random generator used while embedding molecules.
         """
 
-        self.num_tries = num_tries
         self.shape_weight = shape_score_weight
         self.color_weight = color_score_weight
-        if reduce == "max":
-            self.reduce_func = np.max
-        elif reduce == "min":
-            self.reduce_func = np.min
-        elif reduce == "mean":
-            self.reduce_func = np.mean
-        else:
-            logger.error(
-                f"Passed unsupported '{reduce}' as reduce parameter in SCSimilarity."
-            )
-            raise ValueError()
+        self.random_seed = random_seed
 
-    @staticmethod
-    def _embed(mol: Chem.rdchem.Mol) -> Chem.rdchem.Mol:
+    def _embed(self, mol: Chem.rdchem.Mol) -> Chem.rdchem.Mol:
         mol = rdmolops.AddHs(mol)
-        AllChem.EmbedMolecule(mol)
+        AllChem.EmbedMolecule(mol, randomSeed=self.random_seed)
         return mol
 
     @staticmethod
@@ -133,8 +114,8 @@ class SCSimilarity(MoleculeSimilarity):
 
     def _calc_sc_score(self, mol1: Chem.rdchem.Mol, mol2: Chem.rdchem.Mol) -> float:
         try:
-            mol1 = SCSimilarity._embed(mol1)
-            mol2 = SCSimilarity._embed(mol2)
+            mol1 = self._embed(mol1)
+            mol2 = self._embed(mol2)
 
             rdMolAlign.GetO3A(mol1, mol2).Align()
 
@@ -144,9 +125,8 @@ class SCSimilarity(MoleculeSimilarity):
                 1.0 - protrude_dist
             )
         except ValueError as e:
-            logger.warning(f"Could not calculate the sc score: {e}")
+            logger.warning(f"Could not calculate the sc score: {e}.")
             return 0.0
 
     def __call__(self, mol1: Chem.rdchem.Mol, mol2: Chem.rdchem.Mol) -> float:
-        values = [self._calc_sc_score(mol1, mol2) for _ in range(self.num_tries)]
-        return float(self.reduce_func(values))
+        return self._calc_sc_score(mol1, mol2)

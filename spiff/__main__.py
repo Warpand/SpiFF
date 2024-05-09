@@ -64,7 +64,7 @@ if __name__ == "__main__":
         try:
             cfg.override(overrides)
         except ValueError as e:
-            logger.error(f"Error while overriding configuration: {e}")
+            logger.error(f"Error while overriding configuration: {e}.")
             sys.exit(1)
     override_with_flags(cfg, args)
     using_wandb = not args.no_wandb

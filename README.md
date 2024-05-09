@@ -44,3 +44,12 @@ To see all the possible flags, run:
 ```console
 python3 -m spiff --help
 ```
+
+### Dataset Filtering
+For some molecules, rdkit might be unable to create an embedding or use a force field.
+We cannot calculate 3D similarity measure for such molecules. To them out of a dataset,
+run:
+```console
+python3 filter_data [PATH_TO_DATASET] [FILTERED_DATASET_SAVE_PATH]
+```
+The exemplary dataset in the repository is already filtered.
