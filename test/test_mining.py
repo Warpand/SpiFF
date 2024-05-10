@@ -1,5 +1,5 @@
 from unittest import TestCase
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import torch
 
@@ -7,6 +7,19 @@ from spiff.mining import TripletMiner
 
 
 class TestTripletMiner(TestCase):
+    class MockPool:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            pass
+
+        def starmap(self, func, iterable, *args, **kwargs):
+            return [func(*it) for it in iterable]
+
     def setUp(self):
         values = {
             ("mol0", "mol1"): 0.99,
@@ -31,7 +44,8 @@ class TestTripletMiner(TestCase):
 
     def test_mine_triplets(self):
         miner = TripletMiner(self.similarity_measure)
-        triplets, _ = miner.mine(self.molecules)  # type: ignore
+        with patch("spiff.mining.multiprocessing.Pool", TestTripletMiner.MockPool):
+            triplets, _ = miner.mine(self.molecules)  # type: ignore
 
         self.assertTrue(
             torch.all(triplets.anchor_indexes == torch.LongTensor([1, 5, 6, 9, 14, 16]))
@@ -49,7 +63,8 @@ class TestTripletMiner(TestCase):
 
     def test_mine_similarity(self):
         miner = TripletMiner(self.similarity_measure)
-        _, sim = miner.mine(self.molecules)  # type: ignore
+        with patch("spiff.mining.multiprocessing.Pool", TestTripletMiner.MockPool):
+            _, sim = miner.mine(self.molecules)  # type: ignore
 
         # fmt: off
         expected_similarity = torch.FloatTensor(

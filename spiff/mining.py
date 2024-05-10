@@ -1,4 +1,5 @@
 import logging
+import multiprocessing
 import sys
 from dataclasses import dataclass
 from typing import List, Tuple
@@ -31,22 +32,80 @@ class TripleIndexes:
         )
 
 
+# noinspection DuplicatedCode
+def _divide(
+    molecules: List[Chem.rdchem.Mol],
+    similarity_measure: MoleculeSimilarity,
+    start_index: int,
+) -> Tuple[TripleIndexes, torch.Tensor]:
+    anchors, positives, negatives = [], [], []
+    similarities = []
+    for (i1, mol1), (i2, mol2), (i3, mol3) in utils.triple_wise(enumerate(molecules)):
+        i1 += start_index
+        i2 += start_index
+        i3 += start_index
+        sim_1_2 = similarity_measure(mol1, mol2)
+        sim_2_3 = similarity_measure(mol2, mol3)
+        sim_1_3 = similarity_measure(mol1, mol3)
+        similarities.extend((sim_1_2, sim_2_3, sim_1_3))
+        # oof
+        if sim_1_2 >= sim_2_3:
+            if sim_1_3 >= sim_1_2:
+                anchors.append(i3)
+                positives.append(i1)
+                negatives.append(i2)
+            elif sim_1_3 >= sim_2_3:
+                anchors.append(i2)
+                positives.append(i1)
+                negatives.append(i3)
+            else:
+                anchors.append(i1)
+                positives.append(i2)
+                negatives.append(i3)
+        else:
+            if sim_1_3 >= sim_2_3:
+                anchors.append(i1)
+                positives.append(i3)
+                negatives.append(i2)
+            elif sim_1_3 >= sim_1_2:
+                anchors.append(i2)
+                positives.append(i3)
+                negatives.append(i1)
+            else:
+                anchors.append(i3)
+                positives.append(i2)
+                negatives.append(i1)
+    return (
+        TripleIndexes(
+            torch.LongTensor(anchors),
+            torch.LongTensor(positives),
+            torch.LongTensor(negatives),
+        ),
+        torch.Tensor(similarities),
+    )
+
+
 class TripletMiner:
     """
     Class dividing a batch of molecules into anchor-positive-negative triples based
     on a similarity measure.
+
+    Uses multiprocessing to parallelize the mining process.
     """
 
-    def __init__(self, similarity_measure: MoleculeSimilarity) -> None:
+    def __init__(
+        self, similarity_measure: MoleculeSimilarity, num_processes: int = 8
+    ) -> None:
         """
         Construct the miner.
 
         :param similarity_measure: similarity measure of molecules used by the miner.
+        :param num_processes: number of processes used while mining.
         """
 
         self.similarity_measure = similarity_measure
+        self.num_processes = num_processes
 
-    # noinspection DuplicatedCode
     def mine(
         self, molecules: List[Chem.rdchem.Mol]
     ) -> Tuple[TripleIndexes, torch.Tensor]:
@@ -67,47 +126,24 @@ class TripletMiner:
         if len(molecules) % 3 != 0:
             logger.error("Triplet Miner received a batch of size not divisible by 3.")
             raise ValueError()
-        anchors, positives, negatives = [], [], []
-        similarities = []
-        for (i1, mol1), (i2, mol2), (i3, mol3) in utils.triple_wise(
-            enumerate(molecules)
-        ):
-            sim_1_2 = self.similarity_measure(mol1, mol2)
-            sim_2_3 = self.similarity_measure(mol2, mol3)
-            sim_1_3 = self.similarity_measure(mol1, mol3)
-            similarities.extend((sim_1_2, sim_2_3, sim_1_3))
-            # oof
-            if sim_1_2 >= sim_2_3:
-                if sim_1_3 >= sim_1_2:
-                    anchors.append(i3)
-                    positives.append(i1)
-                    negatives.append(i2)
-                elif sim_1_3 >= sim_2_3:
-                    anchors.append(i2)
-                    positives.append(i1)
-                    negatives.append(i3)
-                else:
-                    anchors.append(i1)
-                    positives.append(i2)
-                    negatives.append(i3)
-            else:
-                if sim_1_3 >= sim_2_3:
-                    anchors.append(i1)
-                    positives.append(i3)
-                    negatives.append(i2)
-                elif sim_1_3 >= sim_1_2:
-                    anchors.append(i2)
-                    positives.append(i3)
-                    negatives.append(i1)
-                else:
-                    anchors.append(i3)
-                    positives.append(i2)
-                    negatives.append(i1)
+
+        size = len(molecules) // 3
+        args = []
+        for i in range(self.num_processes):
+            start_index = 3 * ((i * size) // self.num_processes)
+            end_index = 3 * (((i + 1) * size) // self.num_processes)
+            args.append(
+                (molecules[start_index:end_index], self.similarity_measure, start_index)
+            )
+
+        with multiprocessing.Pool(self.num_processes) as p:
+            outputs = p.starmap(_divide, args)
+
         return (
             TripleIndexes(
-                torch.LongTensor(anchors),
-                torch.LongTensor(positives),
-                torch.LongTensor(negatives),
+                torch.cat([output[0].anchor_indexes for output in outputs]),
+                torch.cat([output[0].positive_indexes for output in outputs]),
+                torch.cat([output[0].negative_indexes for output in outputs]),
             ),
-            torch.Tensor(similarities),
+            torch.cat([output[1] for output in outputs]),
         )
