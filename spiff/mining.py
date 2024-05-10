@@ -19,15 +19,16 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class TripleIndexes:
-    anchor_indexes: torch.LongTensor
-    positive_indexes: torch.LongTensor
-    negative_indexes: torch.LongTensor
+    anchor_indexes: torch.Tensor
+    positive_indexes: torch.Tensor
+    negative_indexes: torch.Tensor
 
     def to(self, device: str | torch.device) -> Self:
-        self.anchor_indexes.to(device)
-        self.positive_indexes.to(device)
-        self.negative_indexes.to(device)
-        return self
+        return TripleIndexes(
+            self.anchor_indexes.to(device),
+            self.positive_indexes.to(device),
+            self.negative_indexes.to(device),
+        )
 
 
 class TripletMiner:
