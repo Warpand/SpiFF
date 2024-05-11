@@ -112,7 +112,7 @@ class SCSimilarity(MoleculeSimilarity):
     def _get_protrude_dist(mol1: Chem.rdchem.Mol, mol2: Chem.rdchem.Mol) -> float:
         return rdShapeHelpers.ShapeProtrudeDist(mol1, mol2, allowReordering=True)
 
-    def _calc_sc_score(self, mol1: Chem.rdchem.Mol, mol2: Chem.rdchem.Mol) -> float:
+    def __call__(self, mol1: Chem.rdchem.Mol, mol2: Chem.rdchem.Mol) -> float:
         try:
             mol1 = self._embed(mol1)
             mol2 = self._embed(mol2)
@@ -127,6 +127,3 @@ class SCSimilarity(MoleculeSimilarity):
         except ValueError as e:
             logger.warning(f"Could not calculate the sc score: {e}.")
             return 0.0
-
-    def __call__(self, mol1: Chem.rdchem.Mol, mol2: Chem.rdchem.Mol) -> float:
-        return self._calc_sc_score(mol1, mol2)
