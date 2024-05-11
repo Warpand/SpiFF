@@ -76,7 +76,7 @@ class SPiFFModule(pytorch_lightning.LightningModule):
         )
 
         triple_indexes, similarity_values = self.miner.mine(molecules)
-        triple_indexes.to(self.device)
+        triple_indexes = triple_indexes.to(self.device)
         similarity_values = similarity_values.to(self.device)
 
         anchor = embeddings[triple_indexes.anchor_indexes]
