@@ -1,4 +1,5 @@
 import logging
+import multiprocessing
 import os
 from typing import Iterable, List, SupportsIndex, Tuple
 
@@ -7,6 +8,7 @@ import torch_geometric.data
 from rdkit import Chem
 from torch.utils.data import Dataset
 
+import chem.utils
 from data.featurizer import Featurizer, GraphFeatures
 
 logger = logging.getLogger(__name__)
@@ -24,7 +26,7 @@ class ZincDataset(Dataset):
         """
 
         super().__init__()
-        logger.info(f"Extracting chemical features from {data_path}")
+        logger.info(f"Extracting chemical features from {data_path}.")
         df = pd.read_csv(data_path, sep=" ")
         self.molecules = [Chem.MolFromSmiles(smiles) for smiles in df["smiles"]]
         self.feature_data = [featurizer.extract_features(mol) for mol in self.molecules]
@@ -74,3 +76,16 @@ class ZincDataset(Dataset):
         :return: list of rdkit objects representing chemical molecules.
         """
         return [self.molecules[i] for i in indexes]
+
+    def generate_conformations(self, num_processes: int = 8) -> None:
+        """
+        Generate conformations for the set of molecules.
+
+        Parallelized with multiple processes.
+
+        :param num_processes: number of processes used to parallelize the computation.
+        """
+
+        logger.info("Generating conformations.")
+        with multiprocessing.Pool(num_processes) as p:
+            self.molecules = p.map(chem.utils.generate_conformation, self.molecules)

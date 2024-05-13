@@ -16,7 +16,7 @@ class ZincDatamodule(pytorch_lightning.LightningDataModule):
         data_path: str | os.PathLike,
         featurizer: Featurizer,
         batch_size: int,
-        num_workers: int = 8,
+        num_workers: int = 4,
     ) -> None:
         """
         Construct the ZincDataModule.
@@ -34,9 +34,10 @@ class ZincDatamodule(pytorch_lightning.LightningDataModule):
         self.featurizer = featurizer
         self.batch_size = batch_size
         self.num_workers = num_workers
-
-    def setup(self, stage: str) -> None:
         self.data = ZincDataset(self.data_path, self.featurizer)
+        self.data.generate_conformations()
+
+    # def setup(self, stage: str) -> None:
 
     def train_dataloader(self) -> torch.utils.data.DataLoader:
         """

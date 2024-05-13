@@ -77,7 +77,6 @@ class ExperimentConfig(Config):
     batch_size: int = 3 * 512
     epochs: int = 1000
     margin: float = 1.0
-    use_force_field: bool = True
     chem_features: List[str] = field(default_factory=default_chem_features)
     model_config: ModelConfig = field(default_factory=lambda: ModelConfig())
     system_config: SystemConfig = field(default_factory=lambda: SystemConfig())

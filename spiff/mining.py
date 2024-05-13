@@ -1,6 +1,7 @@
 import logging
 import multiprocessing
 import sys
+from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from typing import List, Tuple
 
@@ -91,6 +92,8 @@ class TripletMiner:
     on a similarity measure.
 
     Uses multiprocessing to parallelize the mining process.
+    The terminate_process_pool method must be called after finishing
+    working with this object, so the resources used by the processes might be freed.
     """
 
     def __init__(
@@ -105,6 +108,7 @@ class TripletMiner:
 
         self.similarity_measure = similarity_measure
         self.num_processes = num_processes
+        self.pool = multiprocessing.Pool(num_processes)
 
     def mine(
         self, molecules: List[Chem.rdchem.Mol]
@@ -136,8 +140,7 @@ class TripletMiner:
                 (molecules[start_index:end_index], self.similarity_measure, start_index)
             )
 
-        with multiprocessing.Pool(self.num_processes) as p:
-            outputs = p.starmap(_divide, args)
+        outputs = self.pool.starmap(_divide, args)
 
         return (
             TripleIndexes(
@@ -147,3 +150,20 @@ class TripletMiner:
             ),
             torch.cat([output[1] for output in outputs]),
         )
+
+    def terminate_process_pool(self) -> None:
+        """
+        Terminates the process pool held by this object, allowing for the resources
+        to be freed.
+        """
+        self.pool.terminate()
+
+
+class TripletMinerContextManager(TripletMiner, AbstractContextManager):
+    """
+    Wrapper around the TripletMiner class that works as a context manager and
+    automatically calls the terminate_process_pool method.
+    """
+
+    def __exit__(self, __exc_type, __exc_value, __traceback):
+        self.terminate_process_pool()
