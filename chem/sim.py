@@ -64,6 +64,7 @@ class SCSimilarity(MoleculeSimilarity):
 
     def __init__(
         self,
+        use_force_field: bool,
         shape_score_weight: float = 0.5,
         color_score_weight: float = 0.5,
         random_seed: int = 42,
@@ -71,6 +72,8 @@ class SCSimilarity(MoleculeSimilarity):
         """
         Construct the class.
 
+        :param use_force_field: whether to optimize the conformations of molecules
+        using force fields.
         :param shape_score_weight: weight of the shape compound of the score
         (volumetric comparison).
         :param color_score_weight: weight of the color compound of the
@@ -78,6 +81,7 @@ class SCSimilarity(MoleculeSimilarity):
         :param random_seed: seed of the random generator used while embedding molecules.
         """
 
+        self.use_force_field = use_force_field
         self.shape_weight = shape_score_weight
         self.color_weight = color_score_weight
         self.random_seed = random_seed
@@ -118,6 +122,9 @@ class SCSimilarity(MoleculeSimilarity):
             mol2 = self._embed(mol2)
 
             rdMolAlign.GetO3A(mol1, mol2).Align()
+            if self.use_force_field:
+                AllChem.MMFFOptimizeMolecule(mol1)
+                AllChem.MMFFOptimizeMolecule(mol2)
 
             fmap_score = SCSimilarity._get_fmap_score(mol1, mol2)
             protrude_dist = SCSimilarity._get_protrude_dist(mol1, mol2)

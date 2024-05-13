@@ -36,9 +36,7 @@ def parse_arguments() -> argparse.Namespace:
     wandb_group.add_argument(
         "-P", "--project", help="your wandb project name", metavar="WANDB_PROJECT"
     )
-    wandb_group.add_argument(
-        "--no-wandb", action="store_true", help="whether to use wandb"
-    )
+    wandb_group.add_argument("--no-wandb", action="store_true", help="do not use wandb")
 
     system_group = parser.add_argument_group("System", "Paths and system settings.")
     system_group.add_argument(
@@ -94,6 +92,11 @@ def parse_arguments() -> argparse.Namespace:
         default=cfg.ExperimentConfig.margin,
         help="margin of the Triplet Margin Loss (default: %(default)s)",
     )
+    params_group.add_argument(
+        "--no-force-field",
+        action="store_true",
+        help="turn off using force fields while calculating the similarity score",
+    )
 
     misc = parser.add_argument_group("Miscellaneous")
     misc.add_argument(
@@ -124,3 +127,4 @@ def override_with_flags(config: cfg.ExperimentConfig, args: argparse.Namespace) 
     config.learning_rate = args.learning_rate
     config.epochs = args.epochs
     config.margin = args.margin
+    config.use_force_field = not args.no_force_field

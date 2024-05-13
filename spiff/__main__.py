@@ -113,7 +113,7 @@ if __name__ == "__main__":
     experiment = SPiFFModule(
         spiff,
         torch.nn.TripletMarginLoss(cfg.margin),
-        TripletMiner(SCSimilarity()),
+        TripletMiner(SCSimilarity(cfg.use_force_field)),
         cfg.learning_rate,
         using_wandb,
     )
