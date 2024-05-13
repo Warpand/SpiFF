@@ -17,6 +17,7 @@ def generate_conformation(
     :param seed: random seed used while embedding the molecule.
     :return: molecule with generated conformation.
     """
+
     mol = AllChem.AddHs(mol)
     AllChem.EmbedMolecule(mol, randomSeed=seed)
     AllChem.MMFFOptimizeMolecule(mol)
