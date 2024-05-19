@@ -43,8 +43,8 @@ class TestTripletMiner(TestCase):
         # fmt: on
 
     def test_mine_triplets(self):
-        miner = TripletMiner(self.similarity_measure)
         with patch("spiff.mining.multiprocessing.Pool", TestTripletMiner.MockPool):
+            miner = TripletMiner(self.similarity_measure)
             triplets, _ = miner.mine(self.molecules)  # type: ignore
 
         self.assertTrue(
@@ -62,8 +62,8 @@ class TestTripletMiner(TestCase):
         )
 
     def test_mine_similarity(self):
-        miner = TripletMiner(self.similarity_measure)
         with patch("spiff.mining.multiprocessing.Pool", TestTripletMiner.MockPool):
+            miner = TripletMiner(self.similarity_measure)
             _, sim = miner.mine(self.molecules)  # type: ignore
 
         # fmt: off

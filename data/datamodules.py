@@ -16,7 +16,7 @@ class ZincDatamodule(pytorch_lightning.LightningDataModule):
         data_path: str | os.PathLike,
         featurizer: Featurizer,
         batch_size: int,
-        num_workers: int = 8,
+        dataloader_num_workers: int = 4,
     ) -> None:
         """
         Construct the ZincDataModule.
@@ -24,19 +24,14 @@ class ZincDatamodule(pytorch_lightning.LightningDataModule):
         :param data_path: path to the dataset file.
         :param featurizer: featurizer to extract features from molecules.
         :param batch_size: batch size for a Dataloader.
-        :param num_workers: number of subprocesses which are used in DataLoader.
+        :param dataloader_num_workers: number of subprocesses used in DataLoader.
         """
 
         super().__init__()
-
-        self.data = None
-        self.data_path = data_path
-        self.featurizer = featurizer
+        self.data = ZincDataset(data_path, featurizer)
+        self.data.generate_conformations()
         self.batch_size = batch_size
-        self.num_workers = num_workers
-
-    def setup(self, stage: str) -> None:
-        self.data = ZincDataset(self.data_path, self.featurizer)
+        self.num_workers = dataloader_num_workers
 
     def train_dataloader(self) -> torch.utils.data.DataLoader:
         """

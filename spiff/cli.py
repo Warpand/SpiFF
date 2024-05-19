@@ -36,9 +36,7 @@ def parse_arguments() -> argparse.Namespace:
     wandb_group.add_argument(
         "-P", "--project", help="your wandb project name", metavar="WANDB_PROJECT"
     )
-    wandb_group.add_argument(
-        "--no-wandb", action="store_true", help="whether to use wandb"
-    )
+    wandb_group.add_argument("--no-wandb", action="store_true", help="do not use wandb")
 
     system_group = parser.add_argument_group("System", "Paths and system settings.")
     system_group.add_argument(

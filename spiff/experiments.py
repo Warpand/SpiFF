@@ -86,7 +86,9 @@ class SPiFFModule(pytorch_lightning.LightningModule):
         loss = self.loss_fn(anchor, positive, negative)
 
         self.hist_metric.update(similarity_values)
-        self.log("loss", loss, on_epoch=True, on_step=False, batch_size=len(x))
+        self.log(
+            "loss", loss, on_epoch=True, on_step=False, batch_size=len(molecule_indexes)
+        )
 
         return loss
 

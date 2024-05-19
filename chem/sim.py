@@ -2,7 +2,6 @@ import logging
 import os
 from abc import ABC, abstractmethod
 
-import rdkit.Chem.rdmolops as rdmolops
 from rdkit import Chem, RDConfig
 from rdkit.Chem import AllChem, rdMolAlign, rdShapeHelpers
 from rdkit.Chem.FeatMaps import FeatMaps
@@ -19,6 +18,7 @@ class MoleculeSimilarity(ABC):
         Calculate the similarity measure between the two molecules.
 
         The higher the value, the more similar the molecules.
+        Requires molecules with generated conformations.
 
         :param mol1: the first molecule of interest.
         :param mol2: the second molecule of interest.
@@ -82,11 +82,6 @@ class SCSimilarity(MoleculeSimilarity):
         self.color_weight = color_score_weight
         self.random_seed = random_seed
 
-    def _embed(self, mol: Chem.rdchem.Mol) -> Chem.rdchem.Mol:
-        mol = rdmolops.AddHs(mol)
-        AllChem.EmbedMolecule(mol, randomSeed=self.random_seed)
-        return mol
-
     @staticmethod
     def _get_fmap_score(mol1: Chem.rdchem.Mol, mol2: Chem.rdchem.Mol) -> float:
         feat_lists = [
@@ -114,11 +109,7 @@ class SCSimilarity(MoleculeSimilarity):
 
     def __call__(self, mol1: Chem.rdchem.Mol, mol2: Chem.rdchem.Mol) -> float:
         try:
-            mol1 = self._embed(mol1)
-            mol2 = self._embed(mol2)
-
             rdMolAlign.GetO3A(mol1, mol2).Align()
-
             fmap_score = SCSimilarity._get_fmap_score(mol1, mol2)
             protrude_dist = SCSimilarity._get_protrude_dist(mol1, mol2)
             return self.color_weight * fmap_score + self.shape_weight * (

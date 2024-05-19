@@ -16,7 +16,7 @@ from data.featurizer import GraphFeaturizerFactory
 from spiff.cfg import Config, ExperimentConfig
 from spiff.cli import override_with_flags, parse_arguments
 from spiff.experiments import SPiFFModule
-from spiff.mining import TripletMiner
+from spiff.mining import TripletMinerContextManager
 
 logger = logging.getLogger(__name__)
 
@@ -110,20 +110,21 @@ if __name__ == "__main__":
         cfg.model_config.projection_head_size,
     )
 
-    experiment = SPiFFModule(
-        spiff,
-        torch.nn.TripletMarginLoss(cfg.margin),
-        TripletMiner(SCSimilarity()),
-        cfg.learning_rate,
-        using_wandb,
-    )
+    with TripletMinerContextManager(SCSimilarity()) as triplet_miner:
+        experiment = SPiFFModule(
+            spiff,
+            torch.nn.TripletMarginLoss(cfg.margin),
+            triplet_miner,
+            cfg.learning_rate,
+            using_wandb,
+        )
 
-    trainer = Trainer(
-        accelerator=args.device,
-        logger=pl_logger,
-        max_epochs=cfg.epochs,
-        default_root_dir=cfg.system_config.results_dir,
-        enable_checkpointing=True,
-    )
+        trainer = Trainer(
+            accelerator=args.device,
+            logger=pl_logger,
+            max_epochs=cfg.epochs,
+            default_root_dir=cfg.system_config.results_dir,
+            enable_checkpointing=True,
+        )
 
-    trainer.fit(experiment, datamodule=datamodule)
+        trainer.fit(experiment, datamodule=datamodule)
