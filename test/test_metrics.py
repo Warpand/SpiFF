@@ -12,16 +12,18 @@ class TestHistogram(TestCase):
         res = histogram.compute()
         self.assertTrue(torch.all(res == torch.Tensor([1, 0, 0, 0, 0, 0, 0, 0, 0, 1])))
 
+    @skipUnless(torch.cuda.is_available(), "Requires cuda.")
     def test_devices(self):
         histogram = Histogram(10).to("cuda")
         histogram(torch.Tensor([0.05, 0.95]).to("cuda"))
         res = histogram.compute().cpu()
         self.assertTrue(torch.all(res == torch.Tensor([1, 0, 0, 0, 0, 0, 0, 0, 0, 1])))
 
-
     @skipUnless(torch.cuda.is_available(), "Requires cuda.")
     def test_bins(self):
         histogram = Histogram(10).to("cuda")
+        bins = histogram.bins
+        self.assertEqual(torch.device("cpu"), bins.device)
         self.assertTrue(
             torch.allclose(
                 histogram.bins,
