@@ -31,10 +31,18 @@ def parse_arguments() -> argparse.Namespace:
         "file.",
     )
     wandb_group.add_argument(
-        "-E", "--entity", help="your wandb entity", metavar="WANDB_ENTITY"
+        "-E",
+        "--entity",
+        default=cfg.SystemConfig.wandb_entity,
+        help="your wandb entity",
+        metavar="WANDB_ENTITY",
     )
     wandb_group.add_argument(
-        "-P", "--project", help="your wandb project name", metavar="WANDB_PROJECT"
+        "-P",
+        "--project",
+        default=cfg.SystemConfig.wandb_project,
+        help="your wandb project name",
+        metavar="WANDB_PROJECT",
     )
     wandb_group.add_argument("--no-wandb", action="store_true", help="do not use wandb")
 
