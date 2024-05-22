@@ -112,7 +112,7 @@ class SPiFFModule(pytorch_lightning.LightningModule):
             hist = self.hist_metric.compute()
             hist /= torch.sum(hist)  # normalize to [0.1]
 
-            fig, ax = plt.figure()
+            fig, ax = plt.subplots()
 
             labels = [
                 "{:.2f}".format(bin_label.item())
