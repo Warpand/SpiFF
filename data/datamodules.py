@@ -32,6 +32,7 @@ class ZincDatamodule(pytorch_lightning.LightningDataModule):
         self.data.generate_conformations()
         self.batch_size = batch_size
         self.num_workers = dataloader_num_workers
+        self.featurizer = featurizer
 
     def train_dataloader(self) -> torch.utils.data.DataLoader:
         """
