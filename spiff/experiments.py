@@ -116,7 +116,7 @@ class SPiFFModule(pytorch_lightning.LightningModule):
 
             labels = [
                 "{:.2f}".format(bin_label.item())
-                for bin_label in self.hist_metric.bins[-1]
+                for bin_label in self.hist_metric.bins[:-1]
             ]
 
             plt.bar(labels, hist.cpu().numpy())
