@@ -14,6 +14,7 @@ from spiff.models import SPiFF
 from spiff.utils import figure_to_wandb
 
 logger = logging.getLogger(__name__)
+plt.set_loglevel("WARNING")
 
 
 class SPiFFModule(pytorch_lightning.LightningModule):
