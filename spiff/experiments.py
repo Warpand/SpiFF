@@ -1,18 +1,20 @@
 import logging
 from typing import Any, Callable, Dict, List, Optional, Union
 
+import matplotlib.pyplot as plt
 import pytorch_lightning
 import torch
 import torch_geometric.data.batch
-import wandb
 from pytorch_lightning.utilities.types import OptimizerLRScheduler
 
 from data.featurizer import Featurizer, GraphFeaturizerFactory
 from spiff.metrics import Histogram
 from spiff.mining import TripletMiner
 from spiff.models import SPiFF
+from spiff.utils import figure_to_wandb
 
 logger = logging.getLogger(__name__)
+plt.set_loglevel("WARNING")
 
 
 class SPiFFModule(pytorch_lightning.LightningModule):
@@ -110,19 +112,23 @@ class SPiFFModule(pytorch_lightning.LightningModule):
             wandb_logger = self.logger.experiment  # type: ignore
             hist = self.hist_metric.compute()
             hist /= torch.sum(hist)  # normalize to [0.1]
-            data = [
-                [str(bin_label.item()), bin_val]
-                for bin_label, bin_val in zip(self.hist_metric.bins, hist)
+
+            fig, ax = plt.subplots()
+
+            labels = [
+                "{:.2f}".format(bin_label.item())
+                for bin_label in self.hist_metric.bins[:-1]
             ]
-            table = wandb.Table(data=data, columns=["bin", "probability"])
+
+            plt.bar(labels, hist.cpu().numpy())
+            ax.set_ylabel("probability")
+            ax.set_title("Similarity Distribution")
+
             wandb_logger.log(
-                {
-                    "histogram": wandb.plot.bar(
-                        table, "bin", "probability", title="Similarity Distribution"
-                    )
-                },
-                step=self.current_epoch,
+                {"histogram": figure_to_wandb(fig)}, step=self.current_epoch
             )
+
+            plt.close(fig)
 
         self.hist_metric.reset()
 
