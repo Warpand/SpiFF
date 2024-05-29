@@ -1,9 +1,9 @@
 import os
 
 import pytorch_lightning
+import pytorch_lightning.utilities.types as pl_types
 import torch.utils.data
 import torch_geometric.loader
-from pytorch_lightning.utilities.types import TRAIN_DATALOADERS, EVAL_DATALOADERS
 
 import data.datasets as datasets
 from data.featurizer import Featurizer
@@ -77,7 +77,7 @@ class BaselineDatamodule(pytorch_lightning.LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = dataloader_num_workers
 
-    def train_dataloader(self) -> TRAIN_DATALOADERS:
+    def train_dataloader(self) -> pl_types.TRAIN_DATALOADERS:
         """
         Get the train DataLoader for a baseline experiment.
 
@@ -85,7 +85,7 @@ class BaselineDatamodule(pytorch_lightning.LightningDataModule):
         """
 
         return torch_geometric.loader.DataLoader(
-            self.data.train, # type: ignore
+            self.data.train,  # type: ignore
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             persistent_workers=True,
@@ -93,7 +93,7 @@ class BaselineDatamodule(pytorch_lightning.LightningDataModule):
             pin_memory=True,
         )
 
-    def val_dataloader(self) -> EVAL_DATALOADERS:
+    def val_dataloader(self) -> pl_types.EVAL_DATALOADERS:
         """
         Get the test DataLoader for a baseline experiment.
 

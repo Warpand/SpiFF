@@ -2,7 +2,7 @@ import logging
 import multiprocessing
 import os
 import pathlib
-from typing import Iterable, List, SupportsIndex, Tuple, Union
+from typing import Iterable, List, SupportsIndex, Tuple
 
 import pandas as pd
 import torch
@@ -139,19 +139,20 @@ class BaselineDataset(Dataset):
             torch_geometric.data.Data(
                 data_sample.node_features, data_sample.edge_index
             ),
-            self.labels[index]
-    )
+            self.labels[index],
+        )
 
 
 class BaselineDatasetSplit:
     def __init__(
-            self, data_path: str | os.PathLike,
-            featurizer: Featurizer,
-            label: str,
-            *,
-            test_size: float = 0.2,
-            seed: int = 42,
-            stratify: bool = False
+        self,
+        data_path: str | os.PathLike,
+        featurizer: Featurizer,
+        label: str,
+        *,
+        test_size: float = 0.2,
+        seed: int = 42,
+        stratify: bool = False,
     ) -> None:
         """
         Construct the dataset.
@@ -175,7 +176,7 @@ class BaselineDatasetSplit:
             labels,
             random_state=seed,
             test_size=test_size,
-            stratify=labels if stratify else None
+            stratify=labels if stratify else None,
         )
         self._train = BaselineDataset(features_train, labels_train)
         self._test = BaselineDataset(features_test, labels_test)
@@ -197,5 +198,5 @@ class HIVData(BaselineDatasetSplit):
             pathlib.Path(__file__).parent.resolve() / "dataset/HIV.csv",
             featurizer,
             "HIV_active",
-            stratify=True
+            stratify=True,
         )
