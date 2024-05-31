@@ -63,15 +63,7 @@ class TestConfig(TestCase):
 
     def test_dump(self):
         cfg = TestConfig.DummyConfig()
-        expected = {
-            "x": 1,
-            "y": "2",
-            "z": [1, 2, 3],
-            "inner" : {
-                "a": 1.0,
-                "b": 1.0
-            }
-        }
+        expected = {"x": 1, "y": "2", "z": [1, 2, 3], "inner": {"a": 1.0, "b": 1.0}}
         self.assertDictEqual(expected, cfg.dump())
 
     def test_dump_with_exclude(self):
@@ -81,6 +73,6 @@ class TestConfig(TestCase):
             "y": "2",
             "inner": {
                 "a": 1.0,
-            }
+            },
         }
         self.assertDictEqual(expected, cfg.dump(["z", "b"]))

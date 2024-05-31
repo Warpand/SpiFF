@@ -115,7 +115,7 @@ if __name__ == "__main__":
             path = os.path.join(cfg.system_config.results_dir, run_name + ".json")
             dump = cfg.dump(exclude=["system_config"])
             logger.info(f"Dumping configuration to {path}.")
-            with open(path, 'w') as file:
+            with open(path, "w") as file:
                 json.dump(dump, file)
     except (ValueError, TypeError) as e:
         logger.warning(f"Error while dumping configuration: {e}.")

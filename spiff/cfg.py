@@ -46,7 +46,7 @@ class Config(ABC):
                 setattr(self, key, val)
 
     def dump(
-            self, exclude: Optional[List[str]] = None
+        self, exclude: Optional[List[str]] = None
     ) -> Dict[str, Union[str, int, float, dict]]:
         """
         Return a dict that after being passed to override would recreate the config.
