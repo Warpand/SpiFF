@@ -34,7 +34,7 @@ def default_chem_features():
 
 
 class Config(ABC):
-    """Abstract base class that defines the override method."""
+    """Abstract base class that defines the override and dump methods."""
 
     def override(self, cfg: Dict[str, Union[str, int, float, dict]]) -> None:
         for key, val in cfg.items():
@@ -44,6 +44,24 @@ class Config(ABC):
                 getattr(self, key).override(val)
             else:
                 setattr(self, key, val)
+
+    def dump(
+            self, exclude: Optional[List[str]] = None
+    ) -> Dict[str, Union[str, int, float, dict]]:
+        """
+        Return a dict that after being passed to override would recreate the config.
+
+        :param exclude: list of fields that will be omitted.
+        :return: a dict representation of the config.
+        """
+
+        if exclude is None:
+            exclude = []
+        return {
+            key: val.dump(exclude) if isinstance(val, Config) else val
+            for key, val in self.__dict__.items()
+            if key not in exclude
+        }
 
 
 @dataclass(eq=False)

@@ -110,6 +110,17 @@ if __name__ == "__main__":
         cfg.model_config.projection_head_size,
     )
 
+    try:
+        if args.dump_config:
+            path = os.path.join(cfg.system_config.results_dir, run_name + ".json")
+            dump = cfg.dump(exclude=["system_config"])
+            logger.info(f"Dumping configuration to {path}.")
+            with open(path, 'w') as file:
+                json.dump(dump, file)
+    except (ValueError, TypeError) as e:
+        logger.warning(f"Error while dumping configuration: {e}.")
+
+    # Experiment
     with TripletMinerContextManager(SCSimilarity()) as triplet_miner:
         experiment = SPiFFModule(
             spiff,

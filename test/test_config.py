@@ -60,3 +60,27 @@ class TestConfig(TestCase):
         cfg = TestConfig.DummyConfig()
         overrides = {"override": 0}
         self.assertRaises(ValueError, lambda: cfg.override(overrides))
+
+    def test_dump(self):
+        cfg = TestConfig.DummyConfig()
+        expected = {
+            "x": 1,
+            "y": "2",
+            "z": [1, 2, 3],
+            "inner" : {
+                "a": 1.0,
+                "b": 1.0
+            }
+        }
+        self.assertDictEqual(expected, cfg.dump())
+
+    def test_dump_with_exclude(self):
+        cfg = TestConfig.DummyConfig()
+        expected = {
+            "x": 1,
+            "y": "2",
+            "inner": {
+                "a": 1.0,
+            }
+        }
+        self.assertDictEqual(expected, cfg.dump(["z", "b"]))

@@ -109,24 +109,6 @@ class GraphFeaturizer(Featurizer):
 
         return GraphFeatures(atom_features, edge_index.type(torch.int64))
 
-    def save(self) -> Dict[str, List[str]]:
-        """
-        Create a pickle serializable object representing the featurizer.
-
-        The object can then be used to create a factory that produces a compatible
-        featurizer.
-
-        :return: dictionary representing the featurizer.
-        """
-
-        return {
-            GraphFeaturizer.SYMBOLS_KEY: list(self.atom_codes.keys()),
-            GraphFeaturizer.FEATURES_KEY: [
-                feature.__name__.lower().removeprefix("get")
-                for feature in self.atom_features
-            ],
-        }
-
 
 class GraphFeaturizerFactory(FeaturizerFactory):
     def __init__(
@@ -179,18 +161,3 @@ class GraphFeaturizerFactory(FeaturizerFactory):
 
     def __call__(self) -> Featurizer:
         return GraphFeaturizer(self.atom_symbols, self.atom_features)
-
-    @staticmethod
-    def load(rep: Dict[str, List[str]]) -> "GraphFeaturizerFactory":
-        """
-        Load information from a deserialized to create a factory object.
-
-        Can use a dictionary returned by GraphFeaturizer::save to construct a factory
-        that can produce a compatible featurizer.
-
-        :param rep: dictionary containing deserialized GraphFeaturizer representation.
-        :return: compatible GraphFeaturizerFactory object.
-        """
-        return GraphFeaturizerFactory(
-            rep[GraphFeaturizer.FEATURES_KEY], rep[GraphFeaturizer.SYMBOLS_KEY]
-        )

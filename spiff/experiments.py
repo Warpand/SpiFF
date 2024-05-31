@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Callable, List, Union
 
 import matplotlib.pyplot as plt
 import pytorch_lightning
@@ -7,7 +7,6 @@ import torch
 import torch_geometric.data.batch
 from pytorch_lightning.utilities.types import OptimizerLRScheduler
 
-from data.featurizer import Featurizer, GraphFeaturizerFactory
 from spiff.metrics import Histogram
 from spiff.mining import TripletMiner
 from spiff.models import SPiFF
@@ -52,7 +51,6 @@ class SPiFFModule(pytorch_lightning.LightningModule):
 
         self.using_wandb = using_wandb
 
-        self._featurizer_factory: Optional[GraphFeaturizerFactory] = None
 
     def training_step(
         self,
@@ -143,37 +141,6 @@ class SPiFFModule(pytorch_lightning.LightningModule):
         scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, 0.99)
         return [optimizer], [scheduler]
 
-    def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
-        try:
-            key = self.FEATURIZER_CHECKPOINT_KEY
-            checkpoint[key] = self.trainer.datamodule.featurizer.save()  # type: ignore
-        except AttributeError:
-            logger.warning("Error while saving featurizer to checkpoint.")
-
-    def on_load_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
-        try:
-            self._featurizer_factory = GraphFeaturizerFactory.load(
-                checkpoint[self.FEATURIZER_CHECKPOINT_KEY]
-            )
-        except KeyError:
-            logger.warning("Error while loading featurizer from checkpoint.")
-
-    def get_compatible_featurizer(self) -> Featurizer:
-        """
-        Get a GraphFeaturizer compatible with the model.
-
-        Data necessary to construct the featurizer is extracted from a PyTorch Lightning
-        checkpoint.
-
-        :return: a compatible featurizer.
-        :raises ValueError: if appropriate data was not loaded from the checkpoint.
-        """
-
-        if self._featurizer_factory is not None:
-            return self._featurizer_factory()
-        else:
-            logger.error("Unable to create a compatible FeaturizerFactory.")
-            raise ValueError()
 
     @property
     def latent_size(self) -> int:

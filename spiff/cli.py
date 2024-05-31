@@ -110,6 +110,11 @@ def parse_arguments() -> argparse.Namespace:
         "always appended with a timestamp",
         metavar="RUN_NAME",
     )
+    misc.add_argument(
+        "--dump-config",
+        action="store_true",
+        help="if used, a JSON with the configuration will be saved in results directory"
+    )
 
     return parser.parse_args()
 
