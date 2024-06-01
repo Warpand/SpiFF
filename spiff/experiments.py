@@ -91,7 +91,9 @@ class SPiFFModule(pytorch_lightning.LightningModule):
 
         return loss
 
-    def forward(self, x, edge_index, batch) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, edge_index: torch.Tensor, batch: torch.Tensor
+    ) -> torch.Tensor:
         """
         Perform the SpiFF model forward pass.
 

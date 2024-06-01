@@ -109,3 +109,11 @@ class BaselineDatamodule(pytorch_lightning.LightningDataModule):
             persistent_workers=True,
             pin_memory=True,
         )
+
+    @property
+    def train_dataset(self) -> torch.utils.data.Dataset:
+        return self.data.train
+
+    @property
+    def test_dataset(self) -> torch.utils.data.Dataset:
+        return self.data.test
