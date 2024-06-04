@@ -9,3 +9,7 @@ __pycache__/
 
 # default results directory
 results/
+
+# directory names that can be useful, but we do not want them on git
+checkpoints/
+configs/

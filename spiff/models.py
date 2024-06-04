@@ -36,7 +36,7 @@ class FuncFactory(ABC):
 
 
 class SPiFF(torch.nn.Module):
-    """Model creating latent size representations chemical molecules."""
+    """Model creating latent size representations of chemical molecules."""
 
     def __init__(
         self,

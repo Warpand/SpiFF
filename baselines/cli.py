@@ -1,6 +1,8 @@
 import argparse
 
-import spiff.cfg as cfg
+import baselines.cfg as cfg
+
+"""TO DO"""
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -11,7 +13,7 @@ def parse_arguments() -> argparse.Namespace:
     """
 
     parser = argparse.ArgumentParser(
-        prog="spiff", description="SpiFF - Spatial Features Fingerprint"
+        prog="spiff - baselines", description="Baseline experiments for SpiFF"
     )
 
     config_group = parser.add_argument_group(
@@ -33,14 +35,14 @@ def parse_arguments() -> argparse.Namespace:
     wandb_group.add_argument(
         "-E",
         "--entity",
-        default=cfg.SystemConfig.wandb_entity,
+        default=cfg.BaselineSystemConfig.wandb_entity,
         help="your wandb entity",
         metavar="WANDB_ENTITY",
     )
     wandb_group.add_argument(
         "-P",
         "--project",
-        default=cfg.SystemConfig.wandb_project,
+        default=cfg.BaselineSystemConfig.wandb_project,
         help="your wandb project name",
         metavar="WANDB_PROJECT",
     )
@@ -48,16 +50,9 @@ def parse_arguments() -> argparse.Namespace:
 
     system_group = parser.add_argument_group("System", "Paths and system settings.")
     system_group.add_argument(
-        "-D",
-        "--data",
-        default=cfg.SystemConfig.dataset_path,
-        help="path to the dataset (default: %(default)s)",
-        metavar="DATASET_PATH",
-    )
-    system_group.add_argument(
         "-R",
         "--results",
-        default=cfg.SystemConfig.results_dir,
+        default=cfg.BaselineSystemConfig.results_dir,
         help="path to directory where results are saved (default: %(default)s)",
         metavar="RESULTS_DIR",
     )
@@ -68,6 +63,11 @@ def parse_arguments() -> argparse.Namespace:
         default="cuda",
         help="device to use (default: %(default)s)",
     )
+    system_group.add_argument(
+        "--checkpoint",
+        help="path to SpiFF checkpoint. "
+        "Necessary for frozen and tuned types of experiment.",
+    )
 
     params_group = parser.add_argument_group(
         "Experiment Parameters", "Hyperparameters of the experiment."
@@ -76,29 +76,36 @@ def parse_arguments() -> argparse.Namespace:
         "-l",
         "--learning-rate",
         type=float,
-        default=cfg.ExperimentConfig.learning_rate,
+        default=cfg.BaselineConfig.learning_rate,
         help="learning rate of the gradient descent (default: %(default)s)",
     )
     params_group.add_argument(
         "-b",
         "--batch-size",
         type=int,
-        default=cfg.ExperimentConfig.batch_size,
+        default=cfg.BaselineConfig.batch_size,
         help="batch size; should be divisible by 3 (default: %(default)s)",
     )
     params_group.add_argument(
         "-e",
         "--epochs",
         type=int,
-        default=cfg.ExperimentConfig.epochs,
+        default=cfg.BaselineConfig.epochs,
         help="number of training epochs (default: %(default)s)",
     )
     params_group.add_argument(
-        "-m",
-        "--margin",
-        type=float,
-        default=cfg.ExperimentConfig.margin,
-        help="margin of the Triplet Margin Loss (default: %(default)s)",
+        "-t",
+        "--type",
+        choices=cfg.TYPES,
+        default=cfg.BaselineConfig.type,
+        help="type of the baseline experiment",
+    )
+    params_group.add_argument(
+        "-s",
+        "--set",
+        choices=cfg.DATASETS,
+        default=cfg.BaselineConfig.dataset,
+        help="dataset used during the experiment",
     )
 
     misc = parser.add_argument_group("Miscellaneous")
@@ -110,29 +117,19 @@ def parse_arguments() -> argparse.Namespace:
         "always appended with a timestamp",
         metavar="RUN_NAME",
     )
-    misc.add_argument(
-        "--dump-config",
-        action="store_true",
-        help="if used, a JSON with the configuration will be saved in the "
-        "results directory",
-    )
 
     return parser.parse_args()
 
 
-def override_with_flags(config: cfg.ExperimentConfig, args: argparse.Namespace) -> None:
-    """
-    Override configuration values with values from the commandline flags.
-
-    :param config: ExperimentConfig object whose values are overridden.
-    :param args: Namespace with values of the flags.
-    """
+def override_with_flags(config: cfg.BaselineConfig, args: argparse.Namespace) -> None:
     config.system_config.wandb_entity = args.entity
     config.system_config.wandb_project = args.project
     config.system_config.results_dir = args.results
-    config.system_config.dataset_path = args.data
+    config.system_config.checkpoint_path = args.checkpoint
+
+    config.dataset = args.set
+    config.type = args.type
 
     config.batch_size = args.batch_size
     config.learning_rate = args.learning_rate
     config.epochs = args.epochs
-    config.margin = args.margin
