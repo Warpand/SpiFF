@@ -2,15 +2,14 @@ import json
 import logging
 import os
 import sys
-from datetime import datetime
 
-import coolname
 import torch
 from pytorch_lightning import Trainer
 from pytorch_lightning import loggers as pl_loggers
 
 import spiff.models as models
 from chem.sim import SCSimilarity
+from common.utils import get_run_name
 from data.datamodules import ZincDatamodule
 from data.featurizer import GraphFeaturizerFactory
 from spiff.cfg import Config, ExperimentConfig
@@ -19,14 +18,6 @@ from spiff.experiments import SPiFFModule
 from spiff.mining import TripletMinerContextManager
 
 logger = logging.getLogger(__name__)
-
-
-def get_run_name(base: str) -> str:
-    if base:
-        name = base
-    else:
-        name = coolname.generate_slug(2)
-    return f"{name}-{datetime.now().strftime('%d.%m.%Y-%H:%M')}"
 
 
 def set_up_experiment_logger(

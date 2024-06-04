@@ -200,3 +200,25 @@ class HIVData(BaselineDatasetSplit):
             "HIV_active",
             stratify=True,
         )
+
+
+class BACEData(BaselineDatasetSplit):
+    """Split dataset for beta-secretase pIC50 (regression)."""
+
+    def __init__(self, featurizer) -> None:
+        super().__init__(
+            pathlib.Path(__file__).parent.resolve() / "dataset/bace.csv",
+            featurizer,
+            "pIC50",
+        )
+
+
+class QM9Data(BaselineDatasetSplit):
+    """Slit dataset for quantum properties prediction (regression)."""
+
+    def __init__(self, featurizer) -> None:
+        super().__init__(
+            pathlib.Path(__file__).parent.resolve() / "dataset/QM9.csv",
+            featurizer,
+            "mu",
+        )
