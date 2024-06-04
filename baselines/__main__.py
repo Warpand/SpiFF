@@ -29,6 +29,7 @@ def set_up_experiment_logger(
             entity=config.system_config.wandb_entity,
             name=name,
             save_dir=cfg.system_config.results_dir,
+            tags=[cfg.type, cfg.dataset],
         )
         wandb_logger.experiment.config.update(hyperparams)
         return wandb_logger
@@ -71,6 +72,7 @@ if __name__ == "__main__":
         max_epochs=cfg.epochs,
         default_root_dir=cfg.system_config.results_dir,
         enable_checkpointing=False,
+        log_every_n_steps=50 if cfg.dataset.lower() != "bace" else 1,
     )
 
     trainer.fit(

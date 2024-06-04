@@ -64,7 +64,7 @@ def parse_arguments() -> argparse.Namespace:
     system_group.add_argument(
         "-d",
         "--device",
-        choices=["cuda", "cpu"],
+        choices=["cuda", "cpu", "mps", "auto"],
         default="cuda",
         help="device to use (default: %(default)s)",
     )
@@ -113,7 +113,8 @@ def parse_arguments() -> argparse.Namespace:
     misc.add_argument(
         "--dump-config",
         action="store_true",
-        help="if used, a JSON with the configuration will be saved in results directory"
+        help="if used, a JSON with the configuration will be saved in the "
+        "results directory",
     )
 
     return parser.parse_args()

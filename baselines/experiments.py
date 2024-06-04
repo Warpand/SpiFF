@@ -58,10 +58,10 @@ class BaselineExperiment(ABC, pytorch_lightning.LightningModule):
         y: torch.Tensor,
         phase: Literal["train", "test"],
     ) -> torch.Tensor:
-        pred = self(x, edge_index, batch)
-        loss = self.loss_fn(pred, y)
+        pred = self(x, edge_index, batch).squeeze()
+        loss = self.loss_fn(pred, y.to(pred))
 
-        self.log(f"{phase}/loss", loss, on_step=False, on_epoch=True)
+        self.log(f"{phase}/loss", loss, on_step=False, on_epoch=True, batch_size=len(y))
 
         self.compute_metrics(pred, y, phase)
 
@@ -87,7 +87,7 @@ class BaselineExperiment(ABC, pytorch_lightning.LightningModule):
         x: torch.Tensor = batch_data.x
         edge_indexes: torch.Tensor = batch_data.edge_index
         batch_indexes: torch.Tensor = batch_data.batch
-        self._step(x, edge_indexes, batch_indexes, target, "train")
+        self._step(x, edge_indexes, batch_indexes, target, "test")
 
     def on_train_epoch_end(self) -> None:
         for metric in self.train_metrics:
@@ -138,7 +138,7 @@ class ClassificationExperiment(BaselineExperiment):
                 metrics = self.test_metrics
             case _:
                 raise ValueError()
-        labels = pred >= 0.0
+        labels = (pred >= 0.0).to(torch.int64)
         for metric in metrics:
             metric(labels, target)
 

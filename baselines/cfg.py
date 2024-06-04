@@ -24,12 +24,12 @@ class BaselineConfig(spiff.cfg.Config):
         default_factory=lambda: BaselineSystemConfig()
     )
     learning_rate: float = 1e-4
-    batch_size: int = 2048
+    batch_size: int = 1024
     epochs: int = 100
     chem_features: List[str] = field(default_factory=spiff.cfg.default_chem_features)
     dataset: str = "bace"
     type: str = "frozen"
-    model_layers: List[int] = field(default_factory=list)
+    model_layers: List[int] = field(default_factory=lambda: [256, 256])
     model_activation: str = "ReLU"
     model_activation_args: List = field(default_factory=list)
     model_use_batch_norm: bool = True

@@ -113,9 +113,9 @@ class BaselineDataset(Dataset):
         assert len(features) == len(labels)
         self.features = features
         if pd.api.types.is_integer_dtype(labels):
-            self.labels = torch.LongTensor(labels)
+            self.labels = torch.LongTensor(labels.values)
         else:
-            self.labels = torch.Tensor(labels)
+            self.labels = torch.Tensor(labels.values)
 
     def __len__(self) -> int:
         """
@@ -195,7 +195,7 @@ class HIVData(BaselineDatasetSplit):
 
     def __init__(self, featurizer) -> None:
         super().__init__(
-            pathlib.Path(__file__).parent.resolve() / "dataset/HIV.csv",
+            pathlib.Path(__file__).parent.parent.resolve() / "dataset/HIV.csv",
             featurizer,
             "HIV_active",
             stratify=True,
@@ -207,7 +207,7 @@ class BACEData(BaselineDatasetSplit):
 
     def __init__(self, featurizer) -> None:
         super().__init__(
-            pathlib.Path(__file__).parent.resolve() / "dataset/bace.csv",
+            pathlib.Path(__file__).parent.parent.resolve() / "dataset/bace.csv",
             featurizer,
             "pIC50",
         )
@@ -218,7 +218,7 @@ class QM9Data(BaselineDatasetSplit):
 
     def __init__(self, featurizer) -> None:
         super().__init__(
-            pathlib.Path(__file__).parent.resolve() / "dataset/QM9.csv",
+            pathlib.Path(__file__).parent.parent.resolve() / "dataset/QM9.csv",
             featurizer,
             "mu",
         )

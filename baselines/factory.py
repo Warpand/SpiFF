@@ -1,3 +1,4 @@
+import logging
 import sys
 from abc import ABC, abstractmethod
 
@@ -16,6 +17,8 @@ if sys.version_info < (3, 11):
 else:
     from typing import Self
 
+logger = logging.getLogger(__name__)
+
 
 class SpiFFWrapper(models.SPiFF):
     """
@@ -24,9 +27,8 @@ class SpiFFWrapper(models.SPiFF):
     """
 
     def train(self, mode: bool = True) -> Self:
-        return self
-
-    def eval(self) -> Self:
+        if not mode:
+            return super().train(False)
         return self
 
 
@@ -48,14 +50,14 @@ class BaselineExperimentFactory(ABC):
             self.cfg.spiff_config.gnn_layers,
             models.ActivationFuncFactory(
                 self.cfg.spiff_config.gnn_activation,
-                *self.cfg.spiff_config.gnn_activation_args
+                *self.cfg.spiff_config.gnn_activation_args,
             ),
         )
         mlp_factory = models.LinearModelFactory(
             self.cfg.spiff_config.linear_layer_sizes,
             models.ActivationFuncFactory(
                 self.cfg.spiff_config.linear_activation,
-                *self.cfg.spiff_config.linear_activation_args
+                *self.cfg.spiff_config.linear_activation_args,
             ),
         )
         spiff_class = models.SPiFF if not self.is_spiff_frozen() else SpiFFWrapper
@@ -71,9 +73,20 @@ class BaselineExperimentFactory(ABC):
             None,
         )
         if self.is_checkpoint_needed():
-            spiff.load_state_dict(torch.load(self.cfg.system_config.checkpoint_path))
+            checkpoint_path = self.cfg.system_config.checkpoint_path
+            logger.info(f"Loading weights from checkpoint at {checkpoint_path}")
+            state_dict = torch.load(checkpoint_path)["state_dict"]
+            spiff.load_state_dict(
+                {
+                    key.removeprefix("model."): val
+                    for key, val in state_dict.items()
+                    if "projection_head" not in key
+                }
+            )
         if self.is_spiff_frozen():
+            logger.info("Freezing the SpiFF model.")
             freeze(spiff)
+            spiff.eval()
         return spiff
 
     def _get_model(self) -> torch.nn.Module:
